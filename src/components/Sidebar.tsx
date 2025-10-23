@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   FaTachometerAlt,
-  FaUser,
   FaCalendarCheck,
-  FaChevronDown,
+  FaCheckCircle,
   FaSearch,
   FaPlusCircle,
   FaEye,
@@ -12,14 +11,13 @@ import {
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
-  const [openEnquiries, setOpenEnquiries] = useState(false);
 
-  // Automatically open Enquiries dropdown if current path is under /enquiries
-  useEffect(() => {
-    if (location.pathname.startsWith("/enquiries")) {
-      setOpenEnquiries(true);
-    }
-  }, [location.pathname]);
+  const linkClasses = (path: string) =>
+    `flex items-center p-3 rounded-md transition-all duration-300 ${
+      location.pathname === path
+        ? "bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500 text-green-700 font-semibold"
+        : "hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 hover:border-l-4 hover:border-green-400 hover:text-green-600"
+    }`;
 
   return (
     <aside className="w-64 bg-white shadow-xl flex flex-col h-screen border-r border-gray-200">
@@ -33,90 +31,47 @@ const Sidebar: React.FC = () => {
         <ul className="flex flex-col space-y-1">
           {/* Dashboard */}
           <li>
-            <Link
-              to="/"
-              className={`flex items-center p-3 rounded-md transition-all duration-300 ${
-                location.pathname === "/"
-                  ? "bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-600 text-blue-700 font-semibold shadow-sm"
-                  : "hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 hover:border-l-4 hover:border-blue-500 hover:text-blue-600"
-              }`}
-            >
+            <Link to="/" className={linkClasses("/")}>
               <FaTachometerAlt className="mr-3 w-5 h-5" />
               Dashboard
             </Link>
           </li>
 
-          {/* Enquiries Dropdown */}
+          {/* Search Enquiry */}
           <li>
-            <button
-              onClick={() => setOpenEnquiries(!openEnquiries)}
-              className="flex items-center justify-between w-full p-3 rounded-md hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 hover:text-blue-600 transition-all duration-300"
+            <Link
+              to="/enquiries/search"
+              className={linkClasses("/enquiries/search")}
             >
-              <div className="flex items-center">
-                <FaUser className="mr-3 w-5 h-5" />
-                <span className="font-medium text-gray-700">Enquiries</span>
-              </div>
-              <FaChevronDown
-                className={`w-4 h-4 transform transition-transform ${
-                  openEnquiries ? "rotate-180" : ""
-                }`}
-              />
-            </button>
+              <FaSearch className="mr-3 w-5 h-5" />
+              Search Enquiry
+            </Link>
+          </li>
 
-            {openEnquiries && (
-              <ul className="ml-8 mt-2 flex flex-col space-y-1">
-                <li>
-                  <Link
-                    to="/enquiries/search"
-                    className={`flex items-center p-2 rounded-md text-sm transition-all duration-300 ${
-                      location.pathname === "/enquiries/search"
-                        ? "bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500 text-green-700 font-semibold"
-                        : "hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 hover:border-l-4 hover:border-green-400 hover:text-green-600"
-                    }`}
-                  >
-                    <FaSearch className="mr-3 w-4 h-4" />
-                    Search Enquiry
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/enquiries/add"
-                    className={`flex items-center p-2 rounded-md text-sm transition-all duration-300 ${
-                      location.pathname === "/enquiries/add"
-                        ? "bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500 text-green-700 font-semibold"
-                        : "hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 hover:border-l-4 hover:border-green-400 hover:text-green-600"
-                    }`}
-                  >
-                    <FaPlusCircle className="mr-3 w-4 h-4" />
-                    Add New Enquiry
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/enquiries/view"
-                    className={`flex items-center p-2 rounded-md text-sm transition-all duration-300 ${
-                      location.pathname === "/enquiries/view"
-                        ? "bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500 text-green-700 font-semibold"
-                        : "hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 hover:border-l-4 hover:border-green-400 hover:text-green-600"
-                    }`}
-                  >
-                    <FaEye className="mr-3 w-4 h-4" />
-                    View Enquiry
-                  </Link>
-                </li>
-              </ul>
-            )}
+          {/* Add New Enquiry */}
+          <li>
+            <Link to="/enquiries/add" className={linkClasses("/enquiries/add")}>
+              <FaPlusCircle className="mr-3 w-5 h-5" />
+              Add New Enquiry
+            </Link>
+          </li>
+
+          {/* View Enquiry */}
+          <li>
+            <Link
+              to="/enquiries/view"
+              className={linkClasses("/enquiries/view")}
+            >
+              <FaEye className="mr-3 w-5 h-5" />
+              View Enquiry
+            </Link>
           </li>
 
           {/* Today's Follow Ups */}
           <li>
             <Link
               to="/follow-ups/today"
-              className={`flex items-center p-3 rounded-md transition-all duration-300 ${
-                location.pathname === "/follow-ups/today"
-                  ? "bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-600 text-blue-700 font-semibold shadow-sm"
-                  : "hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 hover:border-l-4 hover:border-blue-500 hover:text-blue-600"
-              }`}
+              className={linkClasses("/follow-ups/today")}
             >
               <FaCalendarCheck className="mr-3 w-5 h-5" />
               Today's Follow Ups
@@ -127,13 +82,9 @@ const Sidebar: React.FC = () => {
           <li>
             <Link
               to="/follow-ups/all"
-              className={`flex items-center p-3 rounded-md transition-all duration-300 ${
-                location.pathname === "/follow-ups/all"
-                  ? "bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-600 text-blue-700 font-semibold shadow-sm"
-                  : "hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 hover:border-l-4 hover:border-blue-500 hover:text-blue-600"
-              }`}
+              className={linkClasses("/follow-ups/all")}
             >
-              <FaCalendarCheck className="mr-3 w-5 h-5" />
+              <FaCheckCircle className="mr-3 w-5 h-5" />
               All Follow Ups
             </Link>
           </li>
@@ -142,7 +93,7 @@ const Sidebar: React.FC = () => {
 
       {/* Footer */}
       <div className="p-6 text-gray-400 text-xs border-t border-gray-100">
-        © 2025 CRM System
+        © 2025 CRM System By KaliByte Solutions
       </div>
     </aside>
   );

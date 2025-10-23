@@ -1,114 +1,1302 @@
-import React from "react";
+import React, { useState } from "react";
 import Layout from "../components/Layout";
+import "./animation.css";
+import "react-datepicker/dist/react-datepicker.css";
 
+// Types
+interface FormData {
+  fullName: string;
+  mobile: string;
+  alternateMobile: string;
+  email: string;
+  address: string;
+  aadharNumber: string;
+  panNumber: string;
+  demateAccount1: string;
+  demateAccount2: string;
+  enquiryState: string;
+  sourceOfEnquiry: string;
+  interestedStatus: string;
+  howDidYouKnow: string;
+  customHowDidYouKnow: string; // For "Other" option
+  callBackDate: string;
+  depositInwardDate: string;
+  depositOutwardDate: string;
+  status: string;
+  profession: string;
+  customProfession: string; // For "Other" option
+  knowledgeOfShareMarket: string;
+}
+
+interface FormErrors {
+  [key: string]: string;
+}
+
+// Reusable Field Component
 const Field: React.FC<{
   label: string;
+  name: string;
+  value: string;
+  onChange: (value: string) => void;
   required?: boolean;
   placeholder?: string;
   type?: string;
-  height?: string; // allow custom height
-}> = ({ label, required, placeholder, type = "text", height = "h-10" }) => {
+  error?: string;
+  icon?: React.ReactNode;
+  maxLength?: number;
+  pattern?: string;
+}> = ({
+  label,
+  name,
+  value,
+  onChange,
+  required,
+  placeholder,
+  type = "text",
+  error,
+  icon,
+  maxLength,
+  pattern,
+}) => {
   return (
-    <div className="flex flex-col gap-1 w-full">
-      <div className="flex items-center">
-        <span className="text-gray-700 text-[13px]">{label}</span>
+    <div className="flex flex-col gap-1.5 w-full">
+      <label
+        htmlFor={name}
+        className="flex items-center text-gray-700 text-sm font-medium"
+      >
+        {label}
         {required && <span className="text-red-500 ml-1">*</span>}
+      </label>
+      <div className="relative">
+        {icon && (
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+            {icon}
+          </div>
+        )}
+        <input
+          id={name}
+          name={name}
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          pattern={pattern}
+          className={`w-full h-11 border rounded-lg px-3 ${
+            icon ? "pl-10" : ""
+          } text-sm text-gray-900 placeholder-gray-400 
+          transition-all duration-200
+          ${
+            error
+              ? "border-red-400 focus:ring-2 focus:ring-red-200 focus:border-red-500"
+              : "border-gray-300 focus:ring-2 focus:ring-green-200 focus:border-green-500"
+          }
+          hover:border-gray-400 focus:outline-none`}
+        />
+        {maxLength && value.length > 0 && (
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+            {value.length}/{maxLength}
+          </span>
+        )}
       </div>
-      <input
-        type={type}
-        placeholder={placeholder}
-        className={`w-full ${height} border border-gray-300 rounded-md px-2 text-black placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-green-500`}
-      />
+      {error && (
+        <span className="text-xs text-red-500 flex items-center gap-1">
+          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fillRule="evenodd"
+              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+              clipRule="evenodd"
+            />
+          </svg>
+          {error}
+        </span>
+      )}
     </div>
   );
 };
 
+// Textarea Field Component
+const TextAreaField: React.FC<{
+  label: string;
+  name: string;
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  placeholder?: string;
+  error?: string;
+  rows?: number;
+}> = ({
+  label,
+  name,
+  value,
+  onChange,
+  required,
+  placeholder,
+  error,
+  rows = 4,
+}) => {
+  return (
+    <div className="flex flex-col gap-1.5 w-full">
+      <label
+        htmlFor={name}
+        className="flex items-center text-gray-700 text-sm font-medium"
+      >
+        {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
+      </label>
+      <textarea
+        id={name}
+        name={name}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={rows}
+        className={`w-full border rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 
+        transition-all duration-200 resize-none
+        ${
+          error
+            ? "border-red-400 focus:ring-2 focus:ring-red-200 focus:border-red-500"
+            : "border-gray-300 focus:ring-2 focus:ring-green-200 focus:border-green-500"
+        }
+        hover:border-gray-400 focus:outline-none`}
+      />
+      {error && (
+        <span className="text-xs text-red-500 flex items-center gap-1">
+          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fillRule="evenodd"
+              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+              clipRule="evenodd"
+            />
+          </svg>
+          {error}
+        </span>
+      )}
+    </div>
+  );
+};
+
+// Dropdown Field Component
 const DropdownField: React.FC<{
   label: string;
+  name: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
   required?: boolean;
-}> = ({ label, required }) => {
+  error?: string;
+  icon?: React.ReactNode;
+}> = ({ label, name, value, onChange, options, required, error, icon }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
-    <div className="flex flex-col gap-1 w-full">
-      <div className="flex items-center">
-        <span className="text-gray-700 text-[13px]">{label}</span>
-        {required && <span className="text-red-500 ml-1">*</span>}
-      </div>
-      <button
-        className="flex items-center justify-between w-full h-10 px-2 border border-gray-300 rounded-md text-left text-black hover:bg-gray-50"
-        onClick={() => alert(`${label} clicked!`)}
+    <div className="flex flex-col gap-1.5 w-full relative">
+      <label
+        htmlFor={name}
+        className="flex items-center text-gray-700 text-sm font-medium"
       >
-        <span>Select</span>
-        <img
-          src="https://figma-alpha-api.s3.us-west-2.amazonaws.com/images/7388f991-59c7-47ab-9f0b-2e349ad4be5b"
-          className="w-4 h-4"
-          alt="dropdown"
+        {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
+      </label>
+      <div className="relative">
+        {icon && (
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10">
+            {icon}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className={`flex items-center justify-between w-full h-11 px-3 ${
+            icon ? "pl-10" : ""
+          } border rounded-lg text-left text-sm
+          transition-all duration-200
+          ${
+            error
+              ? "border-red-400 focus:ring-2 focus:ring-red-200 focus:border-red-500"
+              : "border-gray-300 focus:ring-2 focus:ring-green-200 focus:border-green-500"
+          }
+          hover:border-gray-400 focus:outline-none ${
+            value ? "text-gray-900" : "text-gray-400"
+          }`}
+        >
+          <span className="truncate">{value || "Select an option"}</span>
+          <svg
+            className={`w-5 h-5 text-gray-400 transition-transform duration-200 flex-shrink-0 ${
+              isOpen ? "rotate-180" : ""
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </button>
+
+        {isOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-10"
+              onClick={() => setIsOpen(false)}
+            />
+            <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+              {options.map((option, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => {
+                    onChange(option);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full px-3 py-2.5 text-left text-sm hover:bg-green-50 transition-colors
+                  ${
+                    value === option
+                      ? "bg-green-50 text-green-700 font-medium"
+                      : "text-gray-700"
+                  }
+                  ${
+                    index !== options.length - 1
+                      ? "border-b border-gray-100"
+                      : ""
+                  }
+                  first:rounded-t-lg last:rounded-b-lg`}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+      {error && (
+        <span className="text-xs text-red-500 flex items-center gap-1">
+          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fillRule="evenodd"
+              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+              clipRule="evenodd"
+            />
+          </svg>
+          {error}
+        </span>
+      )}
+    </div>
+  );
+};
+
+// Date Field Component
+const DateField: React.FC<{
+  label: string;
+  name: string;
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  error?: string;
+  icon?: React.ReactNode;
+}> = ({ label, name, value, onChange, required, error, icon }) => {
+  return (
+    <div className="flex flex-col gap-1.5 w-full">
+      <label
+        htmlFor={name}
+        className="flex items-center text-gray-700 text-sm font-medium"
+      >
+        {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
+      </label>
+      <div className="relative">
+        {icon && (
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10 pointer-events-none">
+            {icon}
+          </div>
+        )}
+        <input
+          id={name}
+          name={name}
+          type="date"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={`w-full h-11 border rounded-lg px-3 ${
+            icon ? "pl-10" : ""
+          } text-sm text-gray-900
+          ${
+            error
+              ? "border-red-400 focus:ring-2 focus:ring-red-200 focus:border-red-500"
+              : "border-gray-300 focus:ring-2 focus:ring-green-200 focus:border-green-500"
+          }
+          hover:border-gray-400 focus:outline-none transition-all duration-200`}
         />
+      </div>
+      {error && (
+        <span className="text-xs text-red-500 flex items-center gap-1">
+          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fillRule="evenodd"
+              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+              clipRule="evenodd"
+            />
+          </svg>
+          {error}
+        </span>
+      )}
+    </div>
+  );
+};
+
+// Toast Notification Component
+const Toast: React.FC<{
+  message: string;
+  type: "success" | "error";
+  onClose: () => void;
+}> = ({ message, type, onClose }) => {
+  React.useEffect(() => {
+    const timer = setTimeout(onClose, 3000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div
+      className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg animate-slide-in-right ${
+        type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
+      }`}
+    >
+      {type === "success" ? (
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <path
+            fillRule="evenodd"
+            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+            clipRule="evenodd"
+          />
+        </svg>
+      ) : (
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <path
+            fillRule="evenodd"
+            d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+            clipRule="evenodd"
+          />
+        </svg>
+      )}
+      <span className="text-sm font-medium">{message}</span>
+      <button onClick={onClose} className="ml-2 hover:opacity-80">
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path
+            fillRule="evenodd"
+            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+            clipRule="evenodd"
+          />
+        </svg>
       </button>
     </div>
   );
 };
 
+// Main Component
 const AddEnquiry: React.FC = () => {
+  const [formData, setFormData] = useState<FormData>({
+    fullName: "",
+    mobile: "",
+    alternateMobile: "",
+    email: "",
+    address: "",
+    aadharNumber: "",
+    panNumber: "",
+    demateAccount1: "",
+    demateAccount2: "",
+    enquiryState: "",
+    sourceOfEnquiry: "",
+    interestedStatus: "",
+    howDidYouKnow: "",
+    customHowDidYouKnow: "",
+    callBackDate: "",
+    depositInwardDate: "",
+    depositOutwardDate: "",
+    status: "",
+    profession: "",
+    customProfession: "",
+    knowledgeOfShareMarket: "",
+  });
+
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
+  // Format mobile number
+  const formatMobile = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 10);
+    return digits;
+  };
+
+  // Format Aadhar number (XXXX XXXX XXXX)
+  const formatAadhar = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 12);
+    return digits.replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3").trim();
+  };
+
+  // Format PAN number
+  const formatPAN = (value: string) => {
+    return value.toUpperCase().slice(0, 10);
+  };
+
+  // Handle field changes
+  const handleChange = (field: keyof FormData, value: string) => {
+    let formattedValue = value;
+
+    // Apply formatting based on field type
+    if (field === "mobile" || field === "alternateMobile") {
+      formattedValue = formatMobile(value);
+    } else if (field === "aadharNumber") {
+      formattedValue = formatAadhar(value);
+    } else if (field === "panNumber") {
+      formattedValue = formatPAN(value);
+    }
+
+    setFormData((prev) => ({ ...prev, [field]: formattedValue }));
+
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  // Validation
+  const validate = (): boolean => {
+    const newErrors: FormErrors = {};
+
+    // Required fields
+    if (!formData.fullName.trim()) newErrors.fullName = "Full name is required";
+    if (!formData.mobile.trim()) {
+      newErrors.mobile = "Mobile number is required";
+    } else if (formData.mobile.length !== 10) {
+      newErrors.mobile = "Mobile number must be 10 digits";
+    }
+    if (!formData.enquiryState)
+      newErrors.enquiryState = "Please select enquiry state";
+    if (!formData.sourceOfEnquiry)
+      newErrors.sourceOfEnquiry = "Please select source of enquiry";
+    if (!formData.interestedStatus)
+      newErrors.interestedStatus = "Please select interested status";
+    if (!formData.howDidYouKnow)
+      newErrors.howDidYouKnow = "Please select an option";
+
+    // Validate "Other" custom fields
+    if (
+      formData.howDidYouKnow === "Other" &&
+      !formData.customHowDidYouKnow.trim()
+    ) {
+      newErrors.customHowDidYouKnow = "Please specify how you knew about us";
+    }
+
+    if (formData.profession === "Other" && !formData.customProfession.trim()) {
+      newErrors.customProfession = "Please specify your profession";
+    }
+
+    // Optional but validated fields
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Invalid email address";
+    }
+    if (formData.alternateMobile && formData.alternateMobile.length !== 10) {
+      newErrors.alternateMobile = "Mobile number must be 10 digits";
+    }
+    if (
+      formData.aadharNumber &&
+      formData.aadharNumber.replace(/\s/g, "").length !== 12
+    ) {
+      newErrors.aadharNumber = "Aadhar number must be 12 digits";
+    }
+    if (
+      formData.panNumber &&
+      !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber)
+    ) {
+      newErrors.panNumber = "Invalid PAN format (e.g., ABCDE1234F)";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Handle submit
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validate()) {
+      setToast({
+        message: "Please fix the errors before submitting",
+        type: "error",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      console.log("Form submitted:", formData);
+      setToast({ message: "Enquiry added successfully!", type: "success" });
+
+      // Reset form
+      setTimeout(() => {
+        setFormData({
+          fullName: "",
+          mobile: "",
+          alternateMobile: "",
+          email: "",
+          address: "",
+          aadharNumber: "",
+          panNumber: "",
+          demateAccount1: "",
+          demateAccount2: "",
+          enquiryState: "",
+          sourceOfEnquiry: "",
+          interestedStatus: "",
+          howDidYouKnow: "",
+          customHowDidYouKnow: "",
+          callBackDate: "",
+          depositInwardDate: "",
+          depositOutwardDate: "",
+          status: "",
+          profession: "",
+          customProfession: "",
+          knowledgeOfShareMarket: "",
+        });
+      }, 1000);
+    } catch (error) {
+      setToast({
+        message: "Failed to submit enquiry. Please try again.",
+        type: "error",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle cancel
+  const handleCancel = () => {
+    const hasData = Object.values(formData).some(
+      (value) => value.trim() !== ""
+    );
+    if (hasData) {
+      setShowCancelConfirm(true);
+    } else {
+      resetForm();
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      fullName: "",
+      mobile: "",
+      alternateMobile: "",
+      email: "",
+      address: "",
+      aadharNumber: "",
+      panNumber: "",
+      demateAccount1: "",
+      demateAccount2: "",
+      enquiryState: "",
+      sourceOfEnquiry: "",
+      interestedStatus: "",
+      howDidYouKnow: "",
+      customHowDidYouKnow: "",
+      callBackDate: "",
+      depositInwardDate: "",
+      depositOutwardDate: "",
+      status: "",
+      profession: "",
+      customProfession: "",
+      knowledgeOfShareMarket: "",
+    });
+    setErrors({});
+    setShowCancelConfirm(false);
+  };
+
+  // Icons
+  const UserIcon = () => (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+      />
+    </svg>
+  );
+
+  const PhoneIcon = () => (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+      />
+    </svg>
+  );
+
+  const EmailIcon = () => (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+      />
+    </svg>
+  );
+
+  const CardIcon = () => (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+      />
+    </svg>
+  );
+
+  const ClipboardIcon = () => (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+      />
+    </svg>
+  );
+
+  const CalendarIcon = () => (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+      />
+    </svg>
+  );
+
+  const StatusIcon = () => (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+  );
+
+  const BookIcon = () => (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+      />
+    </svg>
+  );
+
+  const BriefcaseIcon = () => (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+      />
+    </svg>
+  );
+
   return (
     <Layout>
-      <div className="p-6 bg-gray-100 min-h-screen">
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h1 className="text-xl font-bold text-gray-800 mb-6">
-            Add New Enquiry
-          </h1>
-
-          <div className="flex flex-col md:flex-row gap-6">
-            {/* Left Column */}
-            <div className="flex flex-col gap-4 flex-1">
-              <h2 className="text-gray-700 font-semibold mb-2">
-                Contact Information
-              </h2>
-              <Field label="Full Name" required placeholder="Enter full name" />
-              <Field
-                label="Mobile Number"
-                required
-                placeholder="Enter mobile number"
-              />
-              <Field
-                label="Alternate Mobile Number"
-                placeholder="Enter alternate number"
-              />
-              <Field label="Email Address" placeholder="Enter email address" />
-              <Field
-                label="Address"
-                placeholder="Enter your address"
-                height="h-24" // taller address field
-              />
-              <DropdownField label="Select Branch" required />
-            </div>
-
-            {/* Right Column */}
-            <div className="flex flex-col gap-4 flex-1">
-              <h2 className="text-gray-700 font-semibold mb-2">
-                Enquiry Details
-              </h2>
-              <DropdownField label="Select Enquiry State" required />
-              <DropdownField label="Source of Enquiry" required />
-              <DropdownField label="Interested Status" required />
-              <DropdownField label="Course Type" required />
-              <DropdownField label="Course" required />
-              <DropdownField label="How did you know about us?" required />
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="bg-white rounded-t-xl shadow-sm px-6 py-5 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Add New Enquiry
+                </h1>
+                <p className="text-sm text-gray-500 mt-1">
+                  Fill in the details to create a new enquiry
+                </p>
+              </div>
+              <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-green-50 rounded-lg">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <span className="text-sm text-green-700 font-medium">
+                  Draft
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Buttons */}
-          <div className="flex justify-end mt-6 gap-4">
-            <button
-              className="bg-gray-400 text-white px-6 py-2 rounded-md hover:bg-gray-500"
-              onClick={() => alert("Cancelled")}
-            >
-              Cancel
-            </button>
-            <button className="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700">
-              Submit
-            </button>
-          </div>
+          {/* Form */}
+          <form
+            onSubmit={handleSubmit}
+            className="bg-white rounded-b-xl shadow-sm"
+          >
+            <div className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Left Column - Contact Information */}
+                <div className="space-y-5">
+                  <div className="flex items-center gap-2 pb-3 border-b-2 border-green-500">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <UserIcon />
+                    </div>
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Contact Information
+                    </h2>
+                  </div>
+
+                  <Field
+                    label="Full Name"
+                    name="fullName"
+                    value={formData.fullName}
+                    onChange={(value) => handleChange("fullName", value)}
+                    required
+                    placeholder="Enter full name"
+                    error={errors.fullName}
+                    icon={<UserIcon />}
+                  />
+
+                  <Field
+                    label="Mobile Number"
+                    name="mobile"
+                    value={formData.mobile}
+                    onChange={(value) => handleChange("mobile", value)}
+                    required
+                    placeholder="Enter 10-digit mobile number"
+                    type="tel"
+                    error={errors.mobile}
+                    icon={<PhoneIcon />}
+                    maxLength={10}
+                  />
+
+                  <Field
+                    label="Alternate Mobile Number"
+                    name="alternateMobile"
+                    value={formData.alternateMobile}
+                    onChange={(value) => handleChange("alternateMobile", value)}
+                    placeholder="Enter alternate number"
+                    type="tel"
+                    error={errors.alternateMobile}
+                    icon={<PhoneIcon />}
+                    maxLength={10}
+                  />
+
+                  <Field
+                    label="Email Address"
+                    name="email"
+                    value={formData.email}
+                    onChange={(value) => handleChange("email", value)}
+                    placeholder="example@email.com"
+                    type="email"
+                    required
+                    error={errors.email}
+                    icon={<EmailIcon />}
+                  />
+
+                  <TextAreaField
+                    label="Address"
+                    name="address"
+                    value={formData.address}
+                    onChange={(value) => handleChange("address", value)}
+                    placeholder="Enter complete address"
+                    error={errors.address}
+                    required
+                  />
+
+                  <Field
+                    label="Aadhar Number"
+                    name="aadharNumber"
+                    value={formData.aadharNumber}
+                    onChange={(value) => handleChange("aadharNumber", value)}
+                    placeholder="XXXX XXXX XXXX"
+                    required
+                    error={errors.aadharNumber}
+                    icon={<CardIcon />}
+                    maxLength={14}
+                  />
+
+                  <Field
+                    label="PAN Number"
+                    name="panNumber"
+                    value={formData.panNumber}
+                    onChange={(value) => handleChange("panNumber", value)}
+                    placeholder="ABCDE1234F"
+                    error={errors.panNumber}
+                    icon={<CardIcon />}
+                    maxLength={10}
+                    pattern="[A-Z]{5}[0-9]{4}[A-Z]{1}"
+                    required
+                  />
+
+                  <Field
+                    label="Demat Account ID 1"
+                    name="demateAccount1"
+                    value={formData.demateAccount1}
+                    onChange={(value) => handleChange("demateAccount1", value)}
+                    placeholder="Enter account ID"
+                    required
+                    error={errors.demateAccount1}
+                    icon={<ClipboardIcon />}
+                  />
+
+                  <Field
+                    label="Demat Account ID 2"
+                    name="demateAccount2"
+                    value={formData.demateAccount2}
+                    onChange={(value) => handleChange("demateAccount2", value)}
+                    placeholder="Enter account ID (optional)"
+                    error={errors.demateAccount2}
+                    required
+                    icon={<ClipboardIcon />}
+                  />
+                </div>
+
+                {/* Right Column - Enquiry Details */}
+                <div className="space-y-5">
+                  <div className="flex items-center gap-2 pb-3 border-b-2 border-blue-500">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <ClipboardIcon />
+                    </div>
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Enquiry Details
+                    </h2>
+                  </div>
+
+                  <DropdownField
+                    label="Select Enquiry State"
+                    name="enquiryState"
+                    value={formData.enquiryState}
+                    onChange={(value) => handleChange("enquiryState", value)}
+                    options={[
+                      "Andhra Pradesh",
+                      "Arunachal Pradesh",
+                      "Assam",
+                      "Bihar",
+                      "Chhattisgarh",
+                      "Goa",
+                      "Gujarat",
+                      "Haryana",
+                      "Himachal Pradesh",
+                      "Jharkhand",
+                      "Karnataka",
+                      "Kerala",
+                      "Madhya Pradesh",
+                      "Maharashtra",
+                      "Manipur",
+                      "Meghalaya",
+                      "Mizoram",
+                      "Nagaland",
+                      "Odisha",
+                      "Punjab",
+                      "Rajasthan",
+                      "Sikkim",
+                      "Tamil Nadu",
+                      "Telangana",
+                      "Tripura",
+                      "Uttar Pradesh",
+                      "Uttarakhand",
+                      "West Bengal",
+                      "Andaman and Nicobar Islands",
+                      "Chandigarh",
+                      "Dadra and Nagar Haveli and Daman and Diu",
+                      "Delhi",
+                      "Jammu and Kashmir",
+                      "Ladakh",
+                      "Lakshadweep",
+                      "Puducherry",
+                    ]}
+                    required
+                    error={errors.enquiryState}
+                    icon={<ClipboardIcon />}
+                  />
+
+                  <DropdownField
+                    label="Source of Enquiry"
+                    name="sourceOfEnquiry"
+                    value={formData.sourceOfEnquiry}
+                    onChange={(value) => handleChange("sourceOfEnquiry", value)}
+                    options={[
+                      "Phone Call",
+                      "Walk-in",
+                      "Referral",
+                      "Social Media",
+                      "Email",
+                      "Advertisement",
+                    ]}
+                    required
+                    error={errors.sourceOfEnquiry}
+                    icon={<ClipboardIcon />}
+                  />
+
+                  <DropdownField
+                    label="Interested Status"
+                    name="interestedStatus"
+                    value={formData.interestedStatus}
+                    onChange={(value) =>
+                      handleChange("interestedStatus", value)
+                    }
+                    options={[
+                      "100% Interested",
+                      "75% Interested",
+                      "50% Interested",
+                      "25% Interested",
+                      "0% Interested",
+                    ]}
+                    required
+                    error={errors.interestedStatus}
+                    icon={<ClipboardIcon />}
+                  />
+
+                  <DropdownField
+                    label="Status"
+                    name="status"
+                    value={formData.status}
+                    onChange={(value) => handleChange("status", value)}
+                    options={["In Process", "Confirmed", "Pending"]}
+                    required={true}
+                    error={errors.status}
+                    icon={<StatusIcon />}
+                  />
+
+                  {/* Profession Field with "Other" option */}
+                  <DropdownField
+                    label="Profession"
+                    name="profession"
+                    value={formData.profession}
+                    onChange={(value) => {
+                      handleChange("profession", value);
+                      // Clear custom profession if not "Other"
+                      if (value !== "Other") {
+                        handleChange("customProfession", "");
+                      }
+                    }}
+                    options={[
+                      "Farmer",
+                      "Business",
+                      "Traider",
+                      "Self-Employed",
+                      "Student",
+                      "Retired",
+                      "Other",
+                    ]}
+                    required={true}
+                    error={errors.profession}
+                    icon={<BriefcaseIcon />}
+                  />
+
+                  {/* Custom Profession Input - Shows when "Other" is selected */}
+                  {formData.profession === "Other" && (
+                    <Field
+                      label="Specify Profession"
+                      name="customProfession"
+                      value={formData.customProfession}
+                      onChange={(value) =>
+                        handleChange("customProfession", value)
+                      }
+                      required
+                      placeholder="Enter your profession"
+                      error={errors.customProfession}
+                      icon={<BriefcaseIcon />}
+                    />
+                  )}
+
+                  {/* Knowledge of Share Market with "Other" option */}
+                  <DropdownField
+                    label="Knowledge of Share Market"
+                    name="knowledgeOfShareMarket"
+                    value={formData.knowledgeOfShareMarket}
+                    onChange={(value) => {
+                      handleChange("knowledgeOfShareMarket", value);
+                    }}
+                    options={[
+                      "Fresher",
+                      "Intermediate",
+                      "Advanced",
+                      "Professional",
+                    ]}
+                    required={true}
+                    error={errors.knowledgeOfShareMarket}
+                    icon={<BookIcon />}
+                  />
+
+                  {/* How did you know about us with "Other" option */}
+                  <DropdownField
+                    label="How did you know about us?"
+                    name="howDidYouKnow"
+                    value={formData.howDidYouKnow}
+                    onChange={(value) => {
+                      handleChange("howDidYouKnow", value);
+                      // Clear custom field if not "Other"
+                      if (value !== "Other") {
+                        handleChange("customHowDidYouKnow", "");
+                      }
+                    }}
+                    options={[
+                      "Google Search",
+                      "Facebook",
+                      "Instagram",
+                      "LinkedIn",
+                      "Friend/Family",
+                      "Advertisement",
+                      "Other",
+                    ]}
+                    required
+                    error={errors.howDidYouKnow}
+                    icon={<ClipboardIcon />}
+                  />
+
+                  {/* Custom "How did you know" Input - Shows when "Other" is selected */}
+                  {formData.howDidYouKnow === "Other" && (
+                    <Field
+                      label="Specify Source"
+                      name="customHowDidYouKnow"
+                      value={formData.customHowDidYouKnow}
+                      onChange={(value) =>
+                        handleChange("customHowDidYouKnow", value)
+                      }
+                      required
+                      placeholder="Enter how you knew about us"
+                      error={errors.customHowDidYouKnow}
+                      icon={<ClipboardIcon />}
+                    />
+                  )}
+
+                  <DateField
+                    label="Call Back Date"
+                    name="callBackDate"
+                    value={formData.callBackDate}
+                    onChange={(value) => handleChange("callBackDate", value)}
+                    error={errors.callBackDate}
+                    required
+                    icon={<CalendarIcon />}
+                  />
+
+                  <DateField
+                    label="Deposit Inward Date"
+                    name="depositInwardDate"
+                    value={formData.depositInwardDate}
+                    required
+                    onChange={(value) =>
+                      handleChange("depositInwardDate", value)
+                    }
+                    error={errors.depositInwardDate}
+                    icon={<CalendarIcon />}
+                  />
+
+                  <DateField
+                    label="Deposit Outward Date"
+                    name="depositOutwardDate"
+                    value={formData.depositOutwardDate}
+                    onChange={(value) =>
+                      handleChange("depositOutwardDate", value)
+                    }
+                    error={errors.depositOutwardDate}
+                    required
+                    icon={<CalendarIcon />}
+                  />
+
+                  {/* Info Card */}
+                </div>
+              </div>
+              <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex gap-3">
+                  <svg
+                    className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <div>
+                    <h4 className="text-sm font-semibold text-blue-900 mb-1">
+                      Important Note
+                    </h4>
+                    <p className="text-xs text-blue-700 leading-relaxed">
+                      Please ensure all information is accurate before
+                      submitting. Fields marked with * are mandatory. You can
+                      save this as a draft and complete it later.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="px-6 py-4 bg-gray-50 rounded-b-xl border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4">
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="w-full sm:w-auto order-2 sm:order-1 px-6 py-2.5 bg-white border-2 border-gray-300 text-gray-700 font-medium rounded-lg
+                hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200
+                transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isSubmitting}
+              >
+                Cancel
+              </button>
+
+              <div className="flex gap-3 w-full sm:w-auto order-1 sm:order-2">
+                <button
+                  type="submit"
+                  className="flex-1 sm:flex-none px-6 py-2.5 bg-green-600 text-white font-medium rounded-lg
+                  hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-400
+                  transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
+                  flex items-center justify-center gap-2"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <svg
+                        className="animate-spin h-5 w-5 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
+                      </svg>
+                      Submitting...
+                    </>
+                  ) : (
+                    "Submit"
+                  )}
+                </button>
+              </div>
+            </div>
+          </form>
         </div>
+
+        {/* Toast Notification */}
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )}
+
+        {/* Cancel Confirmation Modal */}
+        {showCancelConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="p-3 bg-red-100 rounded-full">
+                  <svg
+                    className="w-6 h-6 text-red-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">
+                    Discard Changes?
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    All unsaved changes will be lost
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowCancelConfirm(false)}
+                  className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Keep Editing
+                </button>
+                <button
+                  onClick={resetForm}
+                  className="flex-1 px-4 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Discard
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );

@@ -13,9 +13,13 @@ const Dashboard: React.FC = () => {
 
   // Map stat title to navigation path
   const handleCardClick = (title: string) => {
-    if (title === "Follow Ups") navigate("/follow-ups/all");
-    else if (title === "Enquiries (Total)") navigate("/enquiries/view");
+    if (title === "Total Enquiries") navigate("/enquiries/view");
+    else if (title === "All Follow Ups") navigate("/follow-ups/all");
     else if (title === "Users (Total)") navigate("/enquiries/view");
+    else if (title === "Add Enquiries") navigate("/enquiries/add");
+    else if (title === "Search Enquiries") navigate("/enquiries/search");
+    else if (title === "Today's Follow Ups") navigate("/follow-ups/today");
+
     // Add other mappings as needed
   };
 
