@@ -161,7 +161,7 @@ const Dashboard: React.FC = () => {
     navigate(routes[action] || "/");
   };
 
-  const handleViewEnquiry = (id: string) => {
+  const handleViewEnquiry = () => {
     navigate("/view-enquiry");
   };
 
@@ -403,7 +403,7 @@ const Dashboard: React.FC = () => {
                     <div
                       key={enquiry.id}
                       className="px-4 py-3 hover:bg-blue-50 transition-colors cursor-pointer"
-                      onClick={() => handleViewEnquiry(enquiry.id)}
+                      onClick={() => handleViewEnquiry()}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
@@ -493,7 +493,7 @@ const Dashboard: React.FC = () => {
                     <div
                       key={enquiry.id}
                       className="px-4 py-3 hover:bg-orange-50 transition-colors cursor-pointer"
-                      onClick={() => handleViewEnquiry(enquiry.id)}
+                      onClick={() => handleViewEnquiry()}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">

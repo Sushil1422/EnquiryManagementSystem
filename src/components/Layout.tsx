@@ -11,7 +11,6 @@ import {
   Menu,
   X,
   ChevronDown,
-  Settings,
   Shield,
   User,
   Bell,
