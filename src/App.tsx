@@ -1,31 +1,96 @@
-// src/App.tsx
-import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Sidebar from "./components/Sidebar";
+import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-import TodaysFollowUps from "./pages/TodaysFollowUps";
-import AllFollowUps from "./pages/AllFollowUps";
 import AddEnquiry from "./pages/AddEnquiry";
 import ViewEnquiry from "./pages/ViewEnquiry";
 import SearchEnquiry from "./pages/SearchEnquiry";
+import TodayFollowUps from "./pages/TodaysFollowUps";
+import AllFollowUps from "./pages/AllFollowUps";
+import UserManagement from "./pages/UserManagement";
+import ProtectedRoute from "./components/ProtectedRoute";
+import { AuthProvider } from "./contexts/AuthContext";
 
-const App: React.FC = () => {
+const AppLayout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <Router>
-      <Routes>
-        {/* Dashboard */}
-        <Route path="/" element={<Dashboard />} />
-
-        {/* Follow Ups */}
-        <Route path="/follow-ups/today" element={<TodaysFollowUps />} />
-        <Route path="/follow-ups/all" element={<AllFollowUps />} />
-
-        {/* Enquiries */}
-        <Route path="/enquiries/search" element={<SearchEnquiry />} />
-        <Route path="/enquiries/add" element={<AddEnquiry />} />
-        <Route path="/enquiries/view" element={<ViewEnquiry />} />
-      </Routes>
-    </Router>
+    <div className="flex min-h-screen bg-gray-50">
+      <Sidebar />
+      <div className="flex-1 md:ml-64">{children}</div>
+    </div>
   );
 };
+
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+
+          <Route element={<ProtectedRoute />}>
+            <Route
+              path="/"
+              element={
+                <AppLayout>
+                  <Dashboard />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/add-enquiry"
+              element={
+                <AppLayout>
+                  <AddEnquiry />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/view-enquiry"
+              element={
+                <AppLayout>
+                  <ViewEnquiry />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/search-enquiry"
+              element={
+                <AppLayout>
+                  <SearchEnquiry />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/today-followups"
+              element={
+                <AppLayout>
+                  <TodayFollowUps />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/all-followups"
+              element={
+                <AppLayout>
+                  <AllFollowUps />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/user-management"
+              element={
+                <AppLayout>
+                  <UserManagement />
+                </AppLayout>
+              }
+            />
+          </Route>
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}
 
 export default App;

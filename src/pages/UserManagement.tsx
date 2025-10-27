@@ -190,13 +190,13 @@ const UserManagement: React.FC = () => {
   const userCount = activeUsers.filter((u) => u.role === "user").length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header Section */}
-        <div className="bg-white rounded-t-xl shadow-sm px-6 py-5 border-b border-gray-200">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-gray-800">
                 User Management
               </h1>
               <p className="text-sm text-gray-500 mt-1">
@@ -214,11 +214,9 @@ const UserManagement: React.FC = () => {
               Add New User
             </button>
           </div>
-        </div>
 
-        {/* Statistics Section */}
-        <div className="bg-white border-x border-gray-200 p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Statistics */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-blue-500">
               <div className="flex items-center justify-between">
                 <div>
@@ -261,118 +259,109 @@ const UserManagement: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Users Table Section */}
-        <div className="bg-white rounded-b-xl shadow-sm overflow-hidden border border-gray-200">
-          <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-b border-gray-200">
-            <h3 className="text-sm font-semibold text-gray-700">All Users</h3>
-            <span className="text-xs text-gray-500">
-              {activeUsers.length} active users
-            </span>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    User
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Username
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Role
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Created
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {activeUsers.length === 0 ? (
+          {/* Users Table */}
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center">
-                      <div className="flex flex-col items-center justify-center">
-                        <Users size={48} className="text-gray-300 mb-4" />
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      User
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Username
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Role
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Created
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {activeUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center">
+                        <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                          <Users size={32} className="text-gray-400" />
+                        </div>
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">
                           No users found
                         </h3>
-                        <p className="text-gray-500 text-sm">
-                          Add your first user to get started
+                        <p className="text-gray-500">
+                          Start by adding your first user
                         </p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  activeUsers.map((user, i) => (
-                    <tr
-                      key={user.id}
-                      className={`transition-colors ${
-                        i % 2 === 0 ? "bg-white" : "bg-gray-50"
-                      } hover:bg-green-50`}
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {user.fullName}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {user.email || "No email"}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-900">
-                          {user.username}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
-                            user.role === "admin"
-                              ? "bg-purple-100 text-purple-800"
-                              : "bg-green-100 text-green-800"
-                          }`}
-                        >
-                          {user.role === "admin" ? "Administrator" : "User"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(user.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => openEditModal(user)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Edit user"
-                          >
-                            <Edit size={18} />
-                          </button>
-                          <button
-                            onClick={() => openDeleteConfirm(user)}
-                            disabled={user.id === currentUser?.id}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title={
-                              user.id === currentUser?.id
-                                ? "Cannot delete own account"
-                                : "Delete user"
-                            }
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    activeUsers.map((user) => (
+                      <tr
+                        key={user.id}
+                        className="hover:bg-gray-50 transition-colors"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {user.fullName}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {user.email}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-gray-900">
+                            {user.username}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              user.role === "admin"
+                                ? "bg-purple-100 text-purple-800"
+                                : "bg-green-100 text-green-800"
+                            }`}
+                          >
+                            {user.role === "admin" ? "Administrator" : "User"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(user.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => openEditModal(user)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Edit user"
+                            >
+                              <Edit size={18} />
+                            </button>
+                            <button
+                              onClick={() => openDeleteConfirm(user)}
+                              disabled={user.id === currentUser?.id}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={
+                                user.id === currentUser?.id
+                                  ? "Cannot delete yourself"
+                                  : "Delete user"
+                              }
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -417,7 +406,7 @@ const UserManagement: React.FC = () => {
       {/* Delete Confirmation */}
       {showDeleteConfirm && selectedUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
             <div className="flex items-center gap-4 mb-4">
               <div className="p-3 bg-red-100 rounded-full">
                 <AlertCircle size={24} className="text-red-600" />
@@ -435,7 +424,10 @@ const UserManagement: React.FC = () => {
             </p>
             <div className="flex gap-3">
               <button
-                onClick={() => setShowDeleteConfirm(false)}
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setSelectedUser(null);
+                }}
                 className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors"
               >
                 Cancel
@@ -459,7 +451,7 @@ const UserManagement: React.FC = () => {
           onClose={() => setToast(null)}
         />
       )}
-    </div>
+    </>
   );
 };
 
@@ -477,14 +469,10 @@ const UserModal: React.FC<any> = ({
 }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 overflow-y-auto">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full my-8 animate-scale-in">
+      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full my-8">
+        {/* Header */}
         <div className="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-4 flex justify-between items-center rounded-t-xl">
-          <div>
-            <h2 className="text-xl font-bold">{title}</h2>
-            <p className="text-sm text-green-100 mt-1">
-              {isEdit ? "Update user information" : "Create a new user account"}
-            </p>
-          </div>
+          <h2 className="text-xl font-bold">{title}</h2>
           <button
             onClick={onCancel}
             className="p-2 hover:bg-white/20 rounded-lg transition-colors"
@@ -493,6 +481,7 @@ const UserModal: React.FC<any> = ({
           </button>
         </div>
 
+        {/* Form */}
         <div className="p-6 space-y-4">
           {/* Username */}
           <div>
@@ -505,16 +494,13 @@ const UserModal: React.FC<any> = ({
               onChange={(e) =>
                 onFormChange({ ...formData, username: e.target.value })
               }
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none transition-all duration-200 ${
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none ${
                 errors.username ? "border-red-400" : "border-gray-300"
               }`}
               placeholder="Enter username"
             />
             {errors.username && (
-              <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                <AlertCircle size={12} />
-                {errors.username}
-              </p>
+              <p className="text-xs text-red-500 mt-1">{errors.username}</p>
             )}
           </div>
 
@@ -523,7 +509,7 @@ const UserModal: React.FC<any> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Password {!isEdit && <span className="text-red-500">*</span>}
               {isEdit && (
-                <span className="text-gray-500 text-xs ml-2">
+                <span className="text-gray-500 text-xs ml-1">
                   (Leave blank to keep current)
                 </span>
               )}
@@ -535,7 +521,7 @@ const UserModal: React.FC<any> = ({
                 onChange={(e) =>
                   onFormChange({ ...formData, password: e.target.value })
                 }
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none pr-10 transition-all duration-200 ${
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none pr-10 ${
                   errors.password ? "border-red-400" : "border-gray-300"
                 }`}
                 placeholder={isEdit ? "Enter new password" : "Enter password"}
@@ -543,16 +529,13 @@ const UserModal: React.FC<any> = ({
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
             {errors.password && (
-              <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                <AlertCircle size={12} />
-                {errors.password}
-              </p>
+              <p className="text-xs text-red-500 mt-1">{errors.password}</p>
             )}
           </div>
 
@@ -567,23 +550,20 @@ const UserModal: React.FC<any> = ({
               onChange={(e) =>
                 onFormChange({ ...formData, fullName: e.target.value })
               }
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none transition-all duration-200 ${
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none ${
                 errors.fullName ? "border-red-400" : "border-gray-300"
               }`}
               placeholder="Enter full name"
             />
             {errors.fullName && (
-              <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                <AlertCircle size={12} />
-                {errors.fullName}
-              </p>
+              <p className="text-xs text-red-500 mt-1">{errors.fullName}</p>
             )}
           </div>
 
           {/* Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email <span className="text-gray-500 text-xs">(Optional)</span>
+              Email
             </label>
             <input
               type="email"
@@ -591,16 +571,13 @@ const UserModal: React.FC<any> = ({
               onChange={(e) =>
                 onFormChange({ ...formData, email: e.target.value })
               }
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none transition-all duration-200 ${
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none ${
                 errors.email ? "border-red-400" : "border-gray-300"
               }`}
-              placeholder="Enter email address"
+              placeholder="Enter email (optional)"
             />
             {errors.email && (
-              <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                <AlertCircle size={12} />
-                {errors.email}
-              </p>
+              <p className="text-xs text-red-500 mt-1">{errors.email}</p>
             )}
           </div>
 
@@ -617,30 +594,16 @@ const UserModal: React.FC<any> = ({
                   role: e.target.value as "admin" | "user",
                 })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none transition-all duration-200"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
             >
               <option value="user">User (Read & Edit)</option>
               <option value="admin">Administrator (Full Access)</option>
             </select>
           </div>
-
-          {/* Info Box */}
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex gap-2">
-              <AlertCircle
-                size={16}
-                className="text-blue-600 flex-shrink-0 mt-0.5"
-              />
-              <p className="text-xs text-blue-700">
-                {isEdit
-                  ? "Update user information. Password will only be changed if a new one is provided."
-                  : "Administrators have full access to all features. Regular users can read and edit enquiries."}
-              </p>
-            </div>
-          </div>
         </div>
 
-        <div className="px-6 py-4 bg-gray-50 rounded-b-xl border-t border-gray-200 flex justify-end gap-3">
+        {/* Footer */}
+        <div className="px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
           <button
             onClick={onCancel}
             className="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
@@ -669,7 +632,7 @@ const Toast: React.FC<any> = ({ message, type, onClose }) => {
 
   return (
     <div
-      className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg animate-slide-in-right ${
+      className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg ${
         type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
       }`}
     >

@@ -1,5 +1,7 @@
-// Types
-export interface FormData {
+const STORAGE_KEY = "enquiry_management_data";
+
+export interface EnquiryData {
+  id: string;
   fullName: string;
   mobile: string;
   alternateMobile: string;
@@ -21,28 +23,37 @@ export interface FormData {
   profession: string;
   customProfession: string;
   knowledgeOfShareMarket: string;
-}
-
-export interface EnquiryData extends FormData {
-  id: string;
   createdAt: string;
   updatedAt: string;
 }
 
-// LocalStorage Keys
-const STORAGE_KEY = "enquiry_management_data";
-
-// Generate unique ID
-export const generateUniqueId = (): string => {
-  return `ENQ-${Date.now()}-${Math.random()
-    .toString(36)
-    .substr(2, 9)
-    .toUpperCase()}`;
+const getCurrentUser = () => {
+  try {
+    const currentUserStr = localStorage.getItem("ems_current_user");
+    if (!currentUserStr) return null;
+    return JSON.parse(currentUserStr);
+  } catch (error) {
+    console.error("Error getting current user:", error);
+    return null;
+  }
 };
 
-// ========== LocalStorage Utility Functions ==========
+const checkDeletePermission = (): boolean => {
+  const currentUser = getCurrentUser();
+  if (!currentUser) {
+    console.error("No user logged in");
+    return false;
+  }
+
+  if (currentUser.role !== "admin") {
+    console.error("User does not have permission to delete");
+    return false;
+  }
+
+  return true;
+};
+
 export const storageUtils = {
-  // Get all enquiries from localStorage
   getAllEnquiries: (): EnquiryData[] => {
     try {
       const data = localStorage.getItem(STORAGE_KEY);
@@ -53,22 +64,18 @@ export const storageUtils = {
     }
   },
 
-  // Save enquiry to localStorage
-  saveEnquiry: (enquiry: FormData): EnquiryData => {
+  saveEnquiry: (enquiry: Omit<EnquiryData, "id" | "createdAt" | "updatedAt">): EnquiryData => {
     try {
       const enquiries = storageUtils.getAllEnquiries();
       const newEnquiry: EnquiryData = {
         ...enquiry,
-        id: generateUniqueId(),
+        id: `ENQ-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
       enquiries.push(newEnquiry);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(enquiries));
-
       console.log("Enquiry saved successfully:", newEnquiry);
-      console.log("Total enquiries:", enquiries.length);
-
       return newEnquiry;
     } catch (error) {
       console.error("Error saving to localStorage:", error);
@@ -76,11 +83,7 @@ export const storageUtils = {
     }
   },
 
-  // Update existing enquiry
-  updateEnquiry: (
-    id: string,
-    updatedData: Partial<FormData>
-  ): EnquiryData | null => {
+  updateEnquiry: (id: string, updatedData: Partial<EnquiryData>): EnquiryData | null => {
     try {
       const enquiries = storageUtils.getAllEnquiries();
       const index = enquiries.findIndex((enq) => enq.id === id);
@@ -100,16 +103,18 @@ export const storageUtils = {
     }
   },
 
-  // Delete enquiry
   deleteEnquiry: (id: string): boolean => {
     try {
+      // Check permission first
+      if (!checkDeletePermission()) {
+        alert("You don't have permission to delete enquiries. Only administrators can delete records.");
+        return false;
+      }
+
       const enquiries = storageUtils.getAllEnquiries();
       const filteredEnquiries = enquiries.filter((enq) => enq.id !== id);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredEnquiries));
-      console.log(
-        "Enquiry deleted successfully. Remaining:",
-        filteredEnquiries.length
-      );
+      console.log("Enquiry deleted successfully. Remaining:", filteredEnquiries.length);
       return true;
     } catch (error) {
       console.error("Error deleting from localStorage:", error);
@@ -117,13 +122,11 @@ export const storageUtils = {
     }
   },
 
-  // Get enquiry by ID
   getEnquiryById: (id: string): EnquiryData | null => {
     const enquiries = storageUtils.getAllEnquiries();
     return enquiries.find((enq) => enq.id === id) || null;
   },
 
-  // Search enquiries
   searchEnquiries: (searchTerm: string): EnquiryData[] => {
     const enquiries = storageUtils.getAllEnquiries();
     const lowerSearchTerm = searchTerm.toLowerCase();
@@ -136,7 +139,6 @@ export const storageUtils = {
     );
   },
 
-  // Get statistics
   getStatistics: () => {
     const enquiries = storageUtils.getAllEnquiries();
     return {
@@ -147,30 +149,94 @@ export const storageUtils = {
     };
   },
 
-  // Download CSV backup
-  downloadCSVBackup: () => {
+  exportData: (): string => {
+    const enquiries = storageUtils.getAllEnquiries();
+    return JSON.stringify(enquiries, null, 2);
+  },
+
+  downloadCSVBackup: (): void => {
     const enquiries = storageUtils.getAllEnquiries();
     if (enquiries.length === 0) {
-      alert("No data to export");
+      alert("No enquiries to export");
       return;
     }
 
-    // Create CSV content
-    const headers = Object.keys(enquiries[0]).join(",");
-    const rows = enquiries.map((enq) =>
-      Object.values(enq)
-        .map((val) => `"${val}"`)
-        .join(",")
-    );
-    const csv = [headers, ...rows].join("\n");
+    const headers = Object.keys(enquiries[0]);
+    const csvContent = [
+      headers.join(","),
+      ...enquiries.map((enq) =>
+        headers.map((header) => `"${enq[header as keyof EnquiryData] || ""}"`).join(",")
+      ),
+    ].join("\n");
 
-    // Download
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `enquiries_backup_${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `enquiries_backup_${new Date().toISOString().split("T")[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   },
+
+  importData: (jsonData: string): boolean => {
+    try {
+      const data = JSON.parse(jsonData);
+      if (Array.isArray(data)) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        console.log("Data imported successfully:", data.length, "records");
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error importing data:", error);
+      return false;
+    }
+  },
+
+  clearAllData: (): void => {
+    if (window.confirm("Are you sure you want to delete all enquiries? This action cannot be undone.")) {
+      localStorage.removeItem(STORAGE_KEY);
+      console.log("All data cleared");
+    }
+  },
+
+  getEnquiriesByDateRange: (startDate: string, endDate: string): EnquiryData[] => {
+    const enquiries = storageUtils.getAllEnquiries();
+    return enquiries.filter((enq) => {
+      const createdDate = new Date(enq.createdAt);
+      return createdDate >= new Date(startDate) && createdDate <= new Date(endDate);
+    });
+  },
+
+  getEnquiriesByStatus: (status: string): EnquiryData[] => {
+    const enquiries = storageUtils.getAllEnquiries();
+    return enquiries.filter((enq) => enq.status === status);
+  },
+
+  isAadharExists: (aadhar: string): boolean => {
+    const enquiries = storageUtils.getAllEnquiries();
+    const cleanAadhar = aadhar.replace(/\s/g, "");
+    return enquiries.some((enq) => enq.aadharNumber.replace(/\s/g, "") === cleanAadhar);
+  },
+
+  isPANExists: (pan: string): boolean => {
+    const enquiries = storageUtils.getAllEnquiries();
+    return enquiries.some((enq) => enq.panNumber.toUpperCase() === pan.toUpperCase());
+  },
+
+  isMobileExists: (mobile: string): boolean => {
+    const enquiries = storageUtils.getAllEnquiries();
+    return enquiries.some((enq) => enq.mobile === mobile);
+  },
+
+  isEmailExists: (email: string): boolean => {
+    const enquiries = storageUtils.getAllEnquiries();
+    return enquiries.some((enq) => enq.email.toLowerCase() === email.toLowerCase());
+  },
+};
+
+export const generateUniqueId = (): string => {
+  return `ENQ-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 };

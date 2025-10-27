@@ -4,180 +4,124 @@ export interface User {
   id: string;
   username: string;
   password: string;
-  role: "admin" | "user";
   fullName: string;
   email?: string;
+  role: "admin" | "user";
   createdAt: string;
+  updatedAt: string;
   createdBy?: string;
   isActive: boolean;
 }
 
 interface AuthContextType {
   currentUser: User | null;
-  login: (username: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => boolean;
   logout: () => void;
   isAdmin: () => boolean;
-  isAuthenticated: boolean;
+  canDelete: () => boolean;
+  canEdit: () => boolean;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AUTH_STORAGE_KEY = "auth_current_user";
-const USERS_STORAGE_KEY = "auth_users";
+const USERS_STORAGE_KEY = "ems_users";
+const CURRENT_USER_KEY = "ems_current_user";
 
-// Default admin credentials
-const DEFAULT_ADMIN: User = {
-  id: "admin-001",
-  username: "admin",
-  password: "admin123", // In production, this should be hashed
-  role: "admin",
-  fullName: "System Administrator",
-  email: "admin@example.com",
-  createdAt: new Date().toISOString(),
-  isActive: true,
-};
-
-export const authUtils = {
-  // Get all users
-  getAllUsers: (): User[] => {
-    try {
-      const users = localStorage.getItem(USERS_STORAGE_KEY);
-      if (!users) {
-        // Initialize with default admin
-        const defaultUsers = [DEFAULT_ADMIN];
-        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(defaultUsers));
-        return defaultUsers;
-      }
-      return JSON.parse(users);
-    } catch (error) {
-      console.error("Error reading users:", error);
-      return [DEFAULT_ADMIN];
-    }
-  },
-
-  // Save users
-  saveUsers: (users: User[]): void => {
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-  },
-
-  // Find user by username
-  findUserByUsername: (username: string): User | null => {
-    const users = authUtils.getAllUsers();
-    return users.find((u) => u.username === username && u.isActive) || null;
-  },
-
-  // Validate credentials
-  validateCredentials: (username: string, password: string): User | null => {
-    const user = authUtils.findUserByUsername(username);
-    if (user && user.password === password && user.isActive) {
-      return user;
-    }
-    return null;
-  },
-
-  // Add new user
-  addUser: (userData: Omit<User, "id" | "createdAt">): User => {
-    const users = authUtils.getAllUsers();
-    const newUser: User = {
-      ...userData,
-      id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+const initializeDefaultUser = () => {
+  const users = localStorage.getItem(USERS_STORAGE_KEY);
+  if (!users) {
+    const defaultAdmin: User = {
+      id: "admin-001",
+      username: "admin",
+      password: "admin123",
+      fullName: "System Administrator",
+      email: "admin@example.com",
+      role: "admin",
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isActive: true,
     };
-    users.push(newUser);
-    authUtils.saveUsers(users);
-    return newUser;
-  },
-
-  // Update user
-  updateUser: (id: string, updates: Partial<User>): boolean => {
-    const users = authUtils.getAllUsers();
-    const index = users.findIndex((u) => u.id === id);
-    if (index === -1) return false;
-
-    users[index] = { ...users[index], ...updates };
-    authUtils.saveUsers(users);
-    return true;
-  },
-
-  // Delete user
-  deleteUser: (id: string): boolean => {
-    const users = authUtils.getAllUsers();
-    const filteredUsers = users.filter((u) => u.id !== id);
-    if (filteredUsers.length === users.length) return false;
-    authUtils.saveUsers(filteredUsers);
-    return true;
-  },
-
-  // Check if username exists
-  usernameExists: (username: string, excludeId?: string): boolean => {
-    const users = authUtils.getAllUsers();
-    return users.some(
-      (u) => u.username === username && (!excludeId || u.id !== excludeId)
-    );
-  },
-
-  // Get current user from session
-  getCurrentUser: (): User | null => {
-    try {
-      const stored = sessionStorage.getItem(AUTH_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  },
-
-  // Save current user to session
-  setCurrentUser: (user: User | null): void => {
-    if (user) {
-      sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
-    } else {
-      sessionStorage.removeItem(AUTH_STORAGE_KEY);
-    }
-  },
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify([defaultAdmin]));
+  }
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session on mount
-    const user = authUtils.getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
-      setIsAuthenticated(true);
+    initializeDefaultUser();
+
+    const storedUser = localStorage.getItem(CURRENT_USER_KEY);
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        setCurrentUser(user);
+      } catch (error) {
+        console.error("Error parsing stored user:", error);
+        localStorage.removeItem(CURRENT_USER_KEY);
+      }
     }
+    setIsLoading(false);
   }, []);
 
-  const login = async (
-    username: string,
-    password: string
-  ): Promise<boolean> => {
-    const user = authUtils.validateCredentials(username, password);
-    if (user) {
-      setCurrentUser(user);
-      setIsAuthenticated(true);
-      authUtils.setCurrentUser(user);
-      return true;
+  const login = (username: string, password: string): boolean => {
+    try {
+      const usersData = localStorage.getItem(USERS_STORAGE_KEY);
+      if (!usersData) return false;
+
+      const users: User[] = JSON.parse(usersData);
+      const user = users.find(
+        (u) =>
+          u.username === username &&
+          u.password === password &&
+          u.isActive === true
+      );
+
+      if (user) {
+        setCurrentUser(user);
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+        console.log("Login successful:", user);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Login error:", error);
+      return false;
     }
-    return false;
   };
 
   const logout = () => {
     setCurrentUser(null);
-    setIsAuthenticated(false);
-    authUtils.setCurrentUser(null);
+    localStorage.removeItem(CURRENT_USER_KEY);
   };
 
-  const isAdmin = (): boolean => {
+  const isAdmin = () => {
     return currentUser?.role === "admin";
+  };
+
+  const canDelete = () => {
+    return currentUser?.role === "admin";
+  };
+
+  const canEdit = () => {
+    return currentUser !== null;
   };
 
   return (
     <AuthContext.Provider
-      value={{ currentUser, login, logout, isAdmin, isAuthenticated }}
+      value={{
+        currentUser,
+        login,
+        logout,
+        isAdmin,
+        canDelete,
+        canEdit,
+        isLoading,
+      }}
     >
       {children}
     </AuthContext.Provider>
@@ -186,8 +130,80 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
+};
+
+export const authUtils = {
+  getAllUsers: (): User[] => {
+    try {
+      const data = localStorage.getItem(USERS_STORAGE_KEY);
+      return data ? JSON.parse(data) : [];
+    } catch (error) {
+      console.error("Error getting users:", error);
+      return [];
+    }
+  },
+
+  addUser: (userData: Omit<User, "id" | "createdAt" | "updatedAt">): User => {
+    const users = authUtils.getAllUsers();
+    const newUser: User = {
+      ...userData,
+      id: `user-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    users.push(newUser);
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+    return newUser;
+  },
+
+  updateUser: (id: string, updates: Partial<User>): boolean => {
+    try {
+      const users = authUtils.getAllUsers();
+      const index = users.findIndex((u) => u.id === id);
+      if (index === -1) return false;
+
+      users[index] = {
+        ...users[index],
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+
+      const currentUser = localStorage.getItem(CURRENT_USER_KEY);
+      if (currentUser) {
+        const parsedUser = JSON.parse(currentUser);
+        if (parsedUser.id === id) {
+          localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(users[index]));
+        }
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error updating user:", error);
+      return false;
+    }
+  },
+
+  deleteUser: (id: string): boolean => {
+    try {
+      const users = authUtils.getAllUsers();
+      const filteredUsers = users.filter((u) => u.id !== id);
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(filteredUsers));
+      return true;
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      return false;
+    }
+  },
+
+  usernameExists: (username: string, excludeId?: string): boolean => {
+    const users = authUtils.getAllUsers();
+    return users.some(
+      (u) => u.username === username && u.id !== excludeId && u.isActive
+    );
+  },
 };

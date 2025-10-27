@@ -1,5 +1,4 @@
-import React, { useState } from "react";
-import Layout from "../components/Layout";
+import React, { useState, useEffect } from "react";
 import "./animation.css";
 import "react-datepicker/dist/react-datepicker.css";
 
@@ -18,19 +17,370 @@ interface FormData {
   sourceOfEnquiry: string;
   interestedStatus: string;
   howDidYouKnow: string;
-  customHowDidYouKnow: string; // For "Other" option
+  customHowDidYouKnow: string;
   callBackDate: string;
   depositInwardDate: string;
   depositOutwardDate: string;
   status: string;
   profession: string;
-  customProfession: string; // For "Other" option
+  customProfession: string;
   knowledgeOfShareMarket: string;
+}
+
+interface EnquiryData extends FormData {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface FormErrors {
   [key: string]: string;
 }
+
+// LocalStorage Keys
+const STORAGE_KEY = "enquiry_management_data";
+
+// ========== LocalStorage Utility Functions ==========
+const storageUtils = {
+  // Get all enquiries from localStorage
+  getAllEnquiries: (): EnquiryData[] => {
+    try {
+      const data = localStorage.getItem(STORAGE_KEY);
+      return data ? JSON.parse(data) : [];
+    } catch (error) {
+      console.error("Error reading from localStorage:", error);
+      return [];
+    }
+  },
+
+  // Save enquiry to localStorage
+  saveEnquiry: (enquiry: FormData): EnquiryData => {
+    try {
+      const enquiries = storageUtils.getAllEnquiries();
+      const newEnquiry: EnquiryData = {
+        ...enquiry,
+        id: generateUniqueId(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      enquiries.push(newEnquiry);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(enquiries));
+      console.log("Enquiry saved successfully:", newEnquiry);
+      console.log("Total enquiries:", enquiries.length);
+      return newEnquiry;
+    } catch (error) {
+      console.error("Error saving to localStorage:", error);
+      throw error;
+    }
+  },
+
+  // Update existing enquiry
+  updateEnquiry: (
+    id: string,
+    updatedData: Partial<FormData>
+  ): EnquiryData | null => {
+    try {
+      const enquiries = storageUtils.getAllEnquiries();
+      const index = enquiries.findIndex((enq) => enq.id === id);
+      if (index === -1) return null;
+      enquiries[index] = {
+        ...enquiries[index],
+        ...updatedData,
+        updatedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(enquiries));
+      console.log("Enquiry updated successfully:", enquiries[index]);
+      return enquiries[index];
+    } catch (error) {
+      console.error("Error updating localStorage:", error);
+      throw error;
+    }
+  },
+
+  // Delete enquiry
+  deleteEnquiry: (id: string): boolean => {
+    try {
+      const enquiries = storageUtils.getAllEnquiries();
+      const filteredEnquiries = enquiries.filter((enq) => enq.id !== id);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredEnquiries));
+      console.log(
+        "Enquiry deleted successfully. Remaining:",
+        filteredEnquiries.length
+      );
+      return true;
+    } catch (error) {
+      console.error("Error deleting from localStorage:", error);
+      return false;
+    }
+  },
+
+  // Get enquiry by ID
+  getEnquiryById: (id: string): EnquiryData | null => {
+    const enquiries = storageUtils.getAllEnquiries();
+    return enquiries.find((enq) => enq.id === id) || null;
+  },
+
+  // Search enquiries
+  searchEnquiries: (searchTerm: string): EnquiryData[] => {
+    const enquiries = storageUtils.getAllEnquiries();
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    return enquiries.filter(
+      (enq) =>
+        enq.fullName.toLowerCase().includes(lowerSearchTerm) ||
+        enq.mobile.includes(searchTerm) ||
+        enq.email.toLowerCase().includes(lowerSearchTerm) ||
+        enq.id.toLowerCase().includes(lowerSearchTerm)
+    );
+  },
+
+  // Get statistics
+  getStatistics: () => {
+    const enquiries = storageUtils.getAllEnquiries();
+    return {
+      total: enquiries.length,
+      confirmed: enquiries.filter((e) => e.status === "Confirmed").length,
+      pending: enquiries.filter((e) => e.status === "Pending").length,
+      inProcess: enquiries.filter((e) => e.status === "In Process").length,
+    };
+  },
+
+  // Export data as JSON (for backup)
+  exportData: (): string => {
+    const enquiries = storageUtils.getAllEnquiries();
+    return JSON.stringify(enquiries, null, 2);
+  },
+
+  // Import data from JSON (for restore)
+  importData: (jsonData: string): boolean => {
+    try {
+      const data = JSON.parse(jsonData);
+      if (Array.isArray(data)) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        console.log("Data imported successfully:", data.length, "records");
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error importing data:", error);
+      return false;
+    }
+  },
+
+  // Clear all data
+  clearAllData: (): void => {
+    if (
+      window.confirm(
+        "Are you sure you want to delete all enquiries? This action cannot be undone."
+      )
+    ) {
+      localStorage.removeItem(STORAGE_KEY);
+      console.log("All data cleared");
+    }
+  },
+
+  // Get enquiries by date range
+  getEnquiriesByDateRange: (
+    startDate: string,
+    endDate: string
+  ): EnquiryData[] => {
+    const enquiries = storageUtils.getAllEnquiries();
+    return enquiries.filter((enq) => {
+      const createdDate = new Date(enq.createdAt);
+      return (
+        createdDate >= new Date(startDate) && createdDate <= new Date(endDate)
+      );
+    });
+  },
+
+  // Get enquiries by status
+  getEnquiriesByStatus: (status: string): EnquiryData[] => {
+    const enquiries = storageUtils.getAllEnquiries();
+    return enquiries.filter((enq) => enq.status === status);
+  },
+
+  // Check if Aadhar number exists
+  isAadharExists: (aadhar: string): boolean => {
+    const enquiries = storageUtils.getAllEnquiries();
+    const cleanAadhar = aadhar.replace(/\s/g, "");
+    return enquiries.some(
+      (enq) => enq.aadharNumber.replace(/\s/g, "") === cleanAadhar
+    );
+  },
+
+  // Check if PAN number exists
+  isPANExists: (pan: string): boolean => {
+    const enquiries = storageUtils.getAllEnquiries();
+    return enquiries.some(
+      (enq) => enq.panNumber.toUpperCase() === pan.toUpperCase()
+    );
+  },
+
+  // Check if mobile number exists
+  isMobileExists: (mobile: string): boolean => {
+    const enquiries = storageUtils.getAllEnquiries();
+    return enquiries.some((enq) => enq.mobile === mobile);
+  },
+
+  // Check if email exists
+  isEmailExists: (email: string): boolean => {
+    const enquiries = storageUtils.getAllEnquiries();
+    return enquiries.some(
+      (enq) => enq.email.toLowerCase() === email.toLowerCase()
+    );
+  },
+};
+
+// Generate unique ID
+const generateUniqueId = (): string => {
+  return `ENQ-${Date.now()}-${Math.random()
+    .toString(36)
+    .substr(2, 9)
+    .toUpperCase()}`;
+};
+
+// ========== Validation Functions ==========
+const ValidationHelpers = {
+  // Validate Full Name
+  validateFullName: (name: string): string => {
+    if (!name.trim()) {
+      return "Full name is required";
+    }
+    if (name.trim().length < 3) {
+      return "Name must be at least 3 characters";
+    }
+    if (!/^[a-zA-Z\s.]+$/.test(name)) {
+      return "Name can only contain letters, spaces, and dots";
+    }
+    if (name.trim().length > 100) {
+      return "Name must not exceed 100 characters";
+    }
+    return "";
+  },
+
+  // Validate Mobile Number
+  validateMobile: (mobile: string, fieldName: string = "Mobile"): string => {
+    if (!mobile.trim()) {
+      return `${fieldName} number is required`;
+    }
+    if (!/^\d{10}$/.test(mobile)) {
+      return `${fieldName} number must be exactly 10 digits`;
+    }
+    if (!/^[6-9]\d{9}$/.test(mobile)) {
+      return `${fieldName} number must start with 6, 7, 8, or 9`;
+    }
+    return "";
+  },
+
+  // Validate Email
+  validateEmail: (email: string): string => {
+    if (!email.trim()) {
+      return "Email address is required";
+    }
+    const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) {
+      return "Please enter a valid email address";
+    }
+    if (email.length > 100) {
+      return "Email must not exceed 100 characters";
+    }
+    return "";
+  },
+
+  // Validate Aadhar Number
+  validateAadhar: (aadhar: string): string => {
+    if (!aadhar.trim()) {
+      return "Aadhar number is required";
+    }
+    const cleanAadhar = aadhar.replace(/\s/g, "");
+    if (!/^\d{12}$/.test(cleanAadhar)) {
+      return "Aadhar number must be exactly 12 digits";
+    }
+    // Verhoeff algorithm check (optional - basic implementation)
+    if (cleanAadhar === "000000000000" || cleanAadhar === "111111111111") {
+      return "Invalid Aadhar number format";
+    }
+    return "";
+  },
+
+  // Validate PAN Number
+  validatePAN: (pan: string): string => {
+    if (!pan.trim()) {
+      return "PAN number is required";
+    }
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+    if (!panRegex.test(pan.toUpperCase())) {
+      return "Invalid PAN format (e.g., ABCDE1234F)";
+    }
+    // Check for valid 4th character (P for individual, C for company, etc.)
+    const fourthChar = pan.charAt(3).toUpperCase();
+    const validFourthChars = ["P", "C", "H", "F", "A", "T", "B", "L", "J", "G"];
+    if (!validFourthChars.includes(fourthChar)) {
+      return "Invalid PAN number - 4th character must be P, C, H, F, A, T, B, L, J, or G";
+    }
+    return "";
+  },
+
+  // Validate Address
+  validateAddress: (address: string): string => {
+    if (!address.trim()) {
+      return "Address is required";
+    }
+    if (address.trim().length < 10) {
+      return "Address must be at least 10 characters";
+    }
+    if (address.trim().length > 500) {
+      return "Address must not exceed 500 characters";
+    }
+    return "";
+  },
+
+  // Validate Demat Account
+  validateDematAccount: (
+    account: string,
+    isRequired: boolean = true
+  ): string => {
+    if (!account.trim()) {
+      return isRequired ? "Demat account ID is required" : "";
+    }
+    if (account.trim().length < 8) {
+      return "Demat account ID must be at least 8 characters";
+    }
+    if (account.trim().length > 20) {
+      return "Demat account ID must not exceed 20 characters";
+    }
+    if (!/^[A-Z0-9]+$/.test(account.toUpperCase())) {
+      return "Demat account ID can only contain letters and numbers";
+    }
+    return "";
+  },
+
+  // Validate Date
+  validateDate: (
+    date: string,
+    fieldName: string,
+    isFutureAllowed: boolean = true
+  ): string => {
+    if (!date) {
+      return `${fieldName} is required`;
+    }
+    const selectedDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (isNaN(selectedDate.getTime())) {
+      return `Invalid ${fieldName.toLowerCase()}`;
+    }
+    if (!isFutureAllowed && selectedDate < today) {
+      return `${fieldName} cannot be in the past`;
+    }
+    // Check if date is not too far in the future (e.g., 2 years)
+    const twoYearsFromNow = new Date();
+    twoYearsFromNow.setFullYear(twoYearsFromNow.getFullYear() + 2);
+    if (selectedDate > twoYearsFromNow) {
+      return `${fieldName} cannot be more than 2 years in the future`;
+    }
+    return "";
+  },
+};
 
 // Reusable Field Component
 const Field: React.FC<{
@@ -38,6 +388,7 @@ const Field: React.FC<{
   name: string;
   value: string;
   onChange: (value: string) => void;
+  onBlur?: () => void;
   required?: boolean;
   placeholder?: string;
   type?: string;
@@ -50,6 +401,7 @@ const Field: React.FC<{
   name,
   value,
   onChange,
+  onBlur,
   required,
   placeholder,
   type = "text",
@@ -79,6 +431,7 @@ const Field: React.FC<{
           type={type}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
           placeholder={placeholder}
           maxLength={maxLength}
           pattern={pattern}
@@ -121,6 +474,7 @@ const TextAreaField: React.FC<{
   name: string;
   value: string;
   onChange: (value: string) => void;
+  onBlur?: () => void;
   required?: boolean;
   placeholder?: string;
   error?: string;
@@ -130,6 +484,7 @@ const TextAreaField: React.FC<{
   name,
   value,
   onChange,
+  onBlur,
   required,
   placeholder,
   error,
@@ -149,6 +504,7 @@ const TextAreaField: React.FC<{
         name={name}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
         placeholder={placeholder}
         rows={rows}
         className={`w-full border rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 
@@ -188,7 +544,6 @@ const DropdownField: React.FC<{
   icon?: React.ReactNode;
 }> = ({ label, name, value, onChange, options, required, error, icon }) => {
   const [isOpen, setIsOpen] = useState(false);
-
   return (
     <div className="flex flex-col gap-1.5 w-full relative">
       <label
@@ -237,7 +592,6 @@ const DropdownField: React.FC<{
             />
           </svg>
         </button>
-
         {isOpen && (
           <>
             <div
@@ -298,7 +652,8 @@ const DateField: React.FC<{
   required?: boolean;
   error?: string;
   icon?: React.ReactNode;
-}> = ({ label, name, value, onChange, required, error, icon }) => {
+  min?: string;
+}> = ({ label, name, value, onChange, required, error, icon, min }) => {
   return (
     <div className="flex flex-col gap-1.5 w-full">
       <label
@@ -320,6 +675,7 @@ const DateField: React.FC<{
           type="date"
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          min={min}
           className={`w-full h-11 border rounded-lg px-3 ${
             icon ? "pl-10" : ""
           } text-sm text-gray-900
@@ -420,14 +776,26 @@ const AddEnquiry: React.FC = () => {
     customProfession: "",
     knowledgeOfShareMarket: "",
   });
-
   const [errors, setErrors] = useState<FormErrors>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error";
   } | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [stats, setStats] = useState({
+    total: 0,
+    confirmed: 0,
+    pending: 0,
+    inProcess: 0,
+  });
+
+  // Load statistics on component mount
+  useEffect(() => {
+    const statistics = storageUtils.getStatistics();
+    setStats(statistics);
+  }, []);
 
   // Format mobile number
   const formatMobile = (value: string) => {
@@ -449,7 +817,6 @@ const AddEnquiry: React.FC = () => {
   // Handle field changes
   const handleChange = (field: keyof FormData, value: string) => {
     let formattedValue = value;
-
     // Apply formatting based on field type
     if (field === "mobile" || field === "alternateMobile") {
       formattedValue = formatMobile(value);
@@ -457,66 +824,188 @@ const AddEnquiry: React.FC = () => {
       formattedValue = formatAadhar(value);
     } else if (field === "panNumber") {
       formattedValue = formatPAN(value);
+    } else if (field === "demateAccount1" || field === "demateAccount2") {
+      formattedValue = value
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "")
+        .slice(0, 20);
     }
-
     setFormData((prev) => ({ ...prev, [field]: formattedValue }));
-
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
     }
   };
 
+  // Handle field blur for real-time validation
+  const handleBlur = (field: keyof FormData) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    validateField(field);
+  };
+
+  // Validate individual field
+  const validateField = (field: keyof FormData) => {
+    const value = formData[field];
+    let error = "";
+    switch (field) {
+      case "fullName":
+        error = ValidationHelpers.validateFullName(value);
+        break;
+      case "mobile":
+        error = ValidationHelpers.validateMobile(value);
+        if (!error && storageUtils.isMobileExists(value)) {
+          error = "This mobile number is already registered";
+        }
+        break;
+      case "alternateMobile":
+        if (value) {
+          error = ValidationHelpers.validateMobile(value, "Alternate mobile");
+          if (!error && value === formData.mobile) {
+            error = "Alternate mobile cannot be same as primary mobile";
+          }
+        }
+        break;
+      case "email":
+        error = ValidationHelpers.validateEmail(value);
+        if (!error && storageUtils.isEmailExists(value)) {
+          error = "This email is already registered";
+        }
+        break;
+      case "address":
+        error = ValidationHelpers.validateAddress(value);
+        break;
+      case "aadharNumber":
+        error = ValidationHelpers.validateAadhar(value);
+        if (!error && storageUtils.isAadharExists(value)) {
+          error = "This Aadhar number is already registered";
+        }
+        break;
+      case "panNumber":
+        error = ValidationHelpers.validatePAN(value);
+        if (!error && storageUtils.isPANExists(value)) {
+          error = "This PAN number is already registered";
+        }
+        break;
+      case "demateAccount1":
+        error = ValidationHelpers.validateDematAccount(value, true);
+        break;
+      case "demateAccount2":
+        if (value) {
+          error = ValidationHelpers.validateDematAccount(value, false);
+          if (!error && value === formData.demateAccount1) {
+            error = "Demat Account 2 cannot be same as Demat Account 1";
+          }
+        }
+        break;
+      case "callBackDate":
+        error = ValidationHelpers.validateDate(value, "Call back date");
+        break;
+      case "depositInwardDate":
+        error = ValidationHelpers.validateDate(value, "Deposit inward date");
+        break;
+      case "depositOutwardDate":
+        error = ValidationHelpers.validateDate(value, "Deposit outward date");
+        if (!error && formData.depositInwardDate) {
+          const inward = new Date(formData.depositInwardDate);
+          const outward = new Date(value);
+          if (outward < inward) {
+            error = "Deposit outward date cannot be before inward date";
+          }
+        }
+        break;
+      case "enquiryState":
+        if (!value) error = "Please select a state";
+        break;
+      case "sourceOfEnquiry":
+        if (!value) error = "Please select source of enquiry";
+        break;
+      case "interestedStatus":
+        if (!value) error = "Please select interested status";
+        break;
+      case "status":
+        if (!value) error = "Please select status";
+        break;
+      case "profession":
+        if (!value) error = "Please select profession";
+        break;
+      case "knowledgeOfShareMarket":
+        if (!value) error = "Please select knowledge level";
+        break;
+      case "howDidYouKnow":
+        if (!value) error = "Please select an option";
+        break;
+      case "customHowDidYouKnow":
+        if (formData.howDidYouKnow === "Other" && !value.trim()) {
+          error = "Please specify how you knew about us";
+        }
+        break;
+      case "customProfession":
+        if (formData.profession === "Other" && !value.trim()) {
+          error = "Please specify your profession";
+        }
+        break;
+    }
+    if (error) {
+      setErrors((prev) => ({ ...prev, [field]: error }));
+    } else {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+    return error;
+  };
+
   // Validation
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
+    // Validate all required fields
+    const fieldsToValidate: (keyof FormData)[] = [
+      "fullName",
+      "mobile",
+      "email",
+      "address",
+      "aadharNumber",
+      "panNumber",
+      "demateAccount1",
+      "enquiryState",
+      "sourceOfEnquiry",
+      "interestedStatus",
+      "status",
+      "profession",
+      "knowledgeOfShareMarket",
+      "howDidYouKnow",
+      "callBackDate",
+      "depositInwardDate",
+      "depositOutwardDate",
+    ];
 
-    // Required fields
-    if (!formData.fullName.trim()) newErrors.fullName = "Full name is required";
-    if (!formData.mobile.trim()) {
-      newErrors.mobile = "Mobile number is required";
-    } else if (formData.mobile.length !== 10) {
-      newErrors.mobile = "Mobile number must be 10 digits";
-    }
-    if (!formData.enquiryState)
-      newErrors.enquiryState = "Please select enquiry state";
-    if (!formData.sourceOfEnquiry)
-      newErrors.sourceOfEnquiry = "Please select source of enquiry";
-    if (!formData.interestedStatus)
-      newErrors.interestedStatus = "Please select interested status";
-    if (!formData.howDidYouKnow)
-      newErrors.howDidYouKnow = "Please select an option";
+    fieldsToValidate.forEach((field) => {
+      const error = validateField(field);
+      if (error) {
+        newErrors[field] = error;
+      }
+    });
 
-    // Validate "Other" custom fields
-    if (
-      formData.howDidYouKnow === "Other" &&
-      !formData.customHowDidYouKnow.trim()
-    ) {
-      newErrors.customHowDidYouKnow = "Please specify how you knew about us";
+    // Validate optional fields if they have values
+    if (formData.alternateMobile) {
+      const error = validateField("alternateMobile");
+      if (error) newErrors.alternateMobile = error;
+    }
+    if (formData.demateAccount2) {
+      const error = validateField("demateAccount2");
+      if (error) newErrors.demateAccount2 = error;
     }
 
-    if (formData.profession === "Other" && !formData.customProfession.trim()) {
-      newErrors.customProfession = "Please specify your profession";
+    // Validate conditional fields
+    if (formData.howDidYouKnow === "Other") {
+      const error = validateField("customHowDidYouKnow");
+      if (error) newErrors.customHowDidYouKnow = error;
     }
-
-    // Optional but validated fields
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Invalid email address";
-    }
-    if (formData.alternateMobile && formData.alternateMobile.length !== 10) {
-      newErrors.alternateMobile = "Mobile number must be 10 digits";
-    }
-    if (
-      formData.aadharNumber &&
-      formData.aadharNumber.replace(/\s/g, "").length !== 12
-    ) {
-      newErrors.aadharNumber = "Aadhar number must be 12 digits";
-    }
-    if (
-      formData.panNumber &&
-      !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber)
-    ) {
-      newErrors.panNumber = "Invalid PAN format (e.g., ABCDE1234F)";
+    if (formData.profession === "Other") {
+      const error = validateField("customProfession");
+      if (error) newErrors.customProfession = error;
     }
 
     setErrors(newErrors);
@@ -527,50 +1016,49 @@ const AddEnquiry: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Mark all fields as touched
+    const allTouched: Record<string, boolean> = {};
+    Object.keys(formData).forEach((key) => {
+      allTouched[key] = true;
+    });
+    setTouched(allTouched);
+
     if (!validate()) {
       setToast({
-        message: "Please fix the errors before submitting",
+        message: "Please fix all validation errors before submitting",
         type: "error",
       });
+      // Scroll to first error
+      const firstErrorField = Object.keys(errors)[0];
+      if (firstErrorField) {
+        const element = document.getElementById(firstErrorField);
+        element?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Save to localStorage
+      const savedEnquiry = storageUtils.saveEnquiry(formData);
 
-      console.log("Form submitted:", formData);
-      setToast({ message: "Enquiry added successfully!", type: "success" });
+      // Update statistics
+      const newStats = storageUtils.getStatistics();
+      setStats(newStats);
+
+      console.log("Form submitted and saved:", savedEnquiry);
+      setToast({
+        message: `Enquiry added successfully! ID: ${savedEnquiry.id}`,
+        type: "success",
+      });
 
       // Reset form
       setTimeout(() => {
-        setFormData({
-          fullName: "",
-          mobile: "",
-          alternateMobile: "",
-          email: "",
-          address: "",
-          aadharNumber: "",
-          panNumber: "",
-          demateAccount1: "",
-          demateAccount2: "",
-          enquiryState: "",
-          sourceOfEnquiry: "",
-          interestedStatus: "",
-          howDidYouKnow: "",
-          customHowDidYouKnow: "",
-          callBackDate: "",
-          depositInwardDate: "",
-          depositOutwardDate: "",
-          status: "",
-          profession: "",
-          customProfession: "",
-          knowledgeOfShareMarket: "",
-        });
-      }, 1000);
+        resetForm();
+      }, 1500);
     } catch (error) {
+      console.error("Error saving enquiry:", error);
       setToast({
         message: "Failed to submit enquiry. Please try again.",
         type: "error",
@@ -617,8 +1105,12 @@ const AddEnquiry: React.FC = () => {
       knowledgeOfShareMarket: "",
     });
     setErrors({});
+    setTouched({});
     setShowCancelConfirm(false);
   };
+
+  // Get today's date for min attribute
+  const today = new Date().toISOString().split("T")[0];
 
   // Icons
   const UserIcon = () => (
@@ -636,7 +1128,6 @@ const AddEnquiry: React.FC = () => {
       />
     </svg>
   );
-
   const PhoneIcon = () => (
     <svg
       className="w-5 h-5"
@@ -652,7 +1143,6 @@ const AddEnquiry: React.FC = () => {
       />
     </svg>
   );
-
   const EmailIcon = () => (
     <svg
       className="w-5 h-5"
@@ -668,7 +1158,6 @@ const AddEnquiry: React.FC = () => {
       />
     </svg>
   );
-
   const CardIcon = () => (
     <svg
       className="w-5 h-5"
@@ -684,7 +1173,6 @@ const AddEnquiry: React.FC = () => {
       />
     </svg>
   );
-
   const ClipboardIcon = () => (
     <svg
       className="w-5 h-5"
@@ -700,7 +1188,6 @@ const AddEnquiry: React.FC = () => {
       />
     </svg>
   );
-
   const CalendarIcon = () => (
     <svg
       className="w-5 h-5"
@@ -716,7 +1203,6 @@ const AddEnquiry: React.FC = () => {
       />
     </svg>
   );
-
   const StatusIcon = () => (
     <svg
       className="w-5 h-5"
@@ -732,7 +1218,6 @@ const AddEnquiry: React.FC = () => {
       />
     </svg>
   );
-
   const BookIcon = () => (
     <svg
       className="w-5 h-5"
@@ -748,7 +1233,6 @@ const AddEnquiry: React.FC = () => {
       />
     </svg>
   );
-
   const BriefcaseIcon = () => (
     <svg
       className="w-5 h-5"
@@ -766,540 +1250,548 @@ const AddEnquiry: React.FC = () => {
   );
 
   return (
-    <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="bg-white rounded-t-xl shadow-sm px-6 py-5 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  Add New Enquiry
-                </h1>
-                <p className="text-sm text-gray-500 mt-1">
-                  Fill in the details to create a new enquiry
-                </p>
-              </div>
-              <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-green-50 rounded-lg">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-sm text-green-700 font-medium">
-                  Draft
-                </span>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header with Statistics */}
+        <div className="bg-white rounded-t-xl shadow-sm px-6 py-5 border-b border-gray-200">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Add New Enquiry
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Fill in the details to create a new enquiry
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              {/* Statistics */}
+              <div className="hidden md:flex items-center gap-3 text-sm">
+                <div className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg font-medium">
+                  Total: {stats.total}
+                </div>
+                <div className="px-3 py-1.5 bg-green-50 text-green-700 rounded-lg font-medium">
+                  Confirmed: {stats.confirmed}
+                </div>
+                <div className="px-3 py-1.5 bg-yellow-50 text-yellow-700 rounded-lg font-medium">
+                  Pending: {stats.pending}
+                </div>
               </div>
             </div>
           </div>
-
-          {/* Form */}
-          <form
-            onSubmit={handleSubmit}
-            className="bg-white rounded-b-xl shadow-sm"
-          >
-            <div className="p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Left Column - Contact Information */}
-                <div className="space-y-5">
-                  <div className="flex items-center gap-2 pb-3 border-b-2 border-green-500">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <UserIcon />
-                    </div>
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      Contact Information
-                    </h2>
-                  </div>
-
-                  <Field
-                    label="Full Name"
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={(value) => handleChange("fullName", value)}
-                    required
-                    placeholder="Enter full name"
-                    error={errors.fullName}
-                    icon={<UserIcon />}
-                  />
-
-                  <Field
-                    label="Mobile Number"
-                    name="mobile"
-                    value={formData.mobile}
-                    onChange={(value) => handleChange("mobile", value)}
-                    required
-                    placeholder="Enter 10-digit mobile number"
-                    type="tel"
-                    error={errors.mobile}
-                    icon={<PhoneIcon />}
-                    maxLength={10}
-                  />
-
-                  <Field
-                    label="Alternate Mobile Number"
-                    name="alternateMobile"
-                    value={formData.alternateMobile}
-                    onChange={(value) => handleChange("alternateMobile", value)}
-                    placeholder="Enter alternate number"
-                    type="tel"
-                    error={errors.alternateMobile}
-                    icon={<PhoneIcon />}
-                    maxLength={10}
-                  />
-
-                  <Field
-                    label="Email Address"
-                    name="email"
-                    value={formData.email}
-                    onChange={(value) => handleChange("email", value)}
-                    placeholder="example@email.com"
-                    type="email"
-                    required
-                    error={errors.email}
-                    icon={<EmailIcon />}
-                  />
-
-                  <TextAreaField
-                    label="Address"
-                    name="address"
-                    value={formData.address}
-                    onChange={(value) => handleChange("address", value)}
-                    placeholder="Enter complete address"
-                    error={errors.address}
-                    required
-                  />
-
-                  <Field
-                    label="Aadhar Number"
-                    name="aadharNumber"
-                    value={formData.aadharNumber}
-                    onChange={(value) => handleChange("aadharNumber", value)}
-                    placeholder="XXXX XXXX XXXX"
-                    required
-                    error={errors.aadharNumber}
-                    icon={<CardIcon />}
-                    maxLength={14}
-                  />
-
-                  <Field
-                    label="PAN Number"
-                    name="panNumber"
-                    value={formData.panNumber}
-                    onChange={(value) => handleChange("panNumber", value)}
-                    placeholder="ABCDE1234F"
-                    error={errors.panNumber}
-                    icon={<CardIcon />}
-                    maxLength={10}
-                    pattern="[A-Z]{5}[0-9]{4}[A-Z]{1}"
-                    required
-                  />
-
-                  <Field
-                    label="Demat Account ID 1"
-                    name="demateAccount1"
-                    value={formData.demateAccount1}
-                    onChange={(value) => handleChange("demateAccount1", value)}
-                    placeholder="Enter account ID"
-                    required
-                    error={errors.demateAccount1}
-                    icon={<ClipboardIcon />}
-                  />
-
-                  <Field
-                    label="Demat Account ID 2"
-                    name="demateAccount2"
-                    value={formData.demateAccount2}
-                    onChange={(value) => handleChange("demateAccount2", value)}
-                    placeholder="Enter account ID (optional)"
-                    error={errors.demateAccount2}
-                    required
-                    icon={<ClipboardIcon />}
-                  />
-                </div>
-
-                {/* Right Column - Enquiry Details */}
-                <div className="space-y-5">
-                  <div className="flex items-center gap-2 pb-3 border-b-2 border-blue-500">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <ClipboardIcon />
-                    </div>
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      Enquiry Details
-                    </h2>
-                  </div>
-
-                  <DropdownField
-                    label="Select Enquiry State"
-                    name="enquiryState"
-                    value={formData.enquiryState}
-                    onChange={(value) => handleChange("enquiryState", value)}
-                    options={[
-                      "Andhra Pradesh",
-                      "Arunachal Pradesh",
-                      "Assam",
-                      "Bihar",
-                      "Chhattisgarh",
-                      "Goa",
-                      "Gujarat",
-                      "Haryana",
-                      "Himachal Pradesh",
-                      "Jharkhand",
-                      "Karnataka",
-                      "Kerala",
-                      "Madhya Pradesh",
-                      "Maharashtra",
-                      "Manipur",
-                      "Meghalaya",
-                      "Mizoram",
-                      "Nagaland",
-                      "Odisha",
-                      "Punjab",
-                      "Rajasthan",
-                      "Sikkim",
-                      "Tamil Nadu",
-                      "Telangana",
-                      "Tripura",
-                      "Uttar Pradesh",
-                      "Uttarakhand",
-                      "West Bengal",
-                      "Andaman and Nicobar Islands",
-                      "Chandigarh",
-                      "Dadra and Nagar Haveli and Daman and Diu",
-                      "Delhi",
-                      "Jammu and Kashmir",
-                      "Ladakh",
-                      "Lakshadweep",
-                      "Puducherry",
-                    ]}
-                    required
-                    error={errors.enquiryState}
-                    icon={<ClipboardIcon />}
-                  />
-
-                  <DropdownField
-                    label="Source of Enquiry"
-                    name="sourceOfEnquiry"
-                    value={formData.sourceOfEnquiry}
-                    onChange={(value) => handleChange("sourceOfEnquiry", value)}
-                    options={[
-                      "Phone Call",
-                      "Walk-in",
-                      "Referral",
-                      "Social Media",
-                      "Email",
-                      "Advertisement",
-                    ]}
-                    required
-                    error={errors.sourceOfEnquiry}
-                    icon={<ClipboardIcon />}
-                  />
-
-                  <DropdownField
-                    label="Interested Status"
-                    name="interestedStatus"
-                    value={formData.interestedStatus}
-                    onChange={(value) =>
-                      handleChange("interestedStatus", value)
-                    }
-                    options={[
-                      "100% Interested",
-                      "75% Interested",
-                      "50% Interested",
-                      "25% Interested",
-                      "0% Interested",
-                    ]}
-                    required
-                    error={errors.interestedStatus}
-                    icon={<ClipboardIcon />}
-                  />
-
-                  <DropdownField
-                    label="Status"
-                    name="status"
-                    value={formData.status}
-                    onChange={(value) => handleChange("status", value)}
-                    options={["In Process", "Confirmed", "Pending"]}
-                    required={true}
-                    error={errors.status}
-                    icon={<StatusIcon />}
-                  />
-
-                  {/* Profession Field with "Other" option */}
-                  <DropdownField
-                    label="Profession"
-                    name="profession"
-                    value={formData.profession}
-                    onChange={(value) => {
-                      handleChange("profession", value);
-                      // Clear custom profession if not "Other"
-                      if (value !== "Other") {
-                        handleChange("customProfession", "");
-                      }
-                    }}
-                    options={[
-                      "Farmer",
-                      "Business",
-                      "Traider",
-                      "Self-Employed",
-                      "Student",
-                      "Retired",
-                      "Other",
-                    ]}
-                    required={true}
-                    error={errors.profession}
-                    icon={<BriefcaseIcon />}
-                  />
-
-                  {/* Custom Profession Input - Shows when "Other" is selected */}
-                  {formData.profession === "Other" && (
-                    <Field
-                      label="Specify Profession"
-                      name="customProfession"
-                      value={formData.customProfession}
-                      onChange={(value) =>
-                        handleChange("customProfession", value)
-                      }
-                      required
-                      placeholder="Enter your profession"
-                      error={errors.customProfession}
-                      icon={<BriefcaseIcon />}
-                    />
-                  )}
-
-                  {/* Knowledge of Share Market with "Other" option */}
-                  <DropdownField
-                    label="Knowledge of Share Market"
-                    name="knowledgeOfShareMarket"
-                    value={formData.knowledgeOfShareMarket}
-                    onChange={(value) => {
-                      handleChange("knowledgeOfShareMarket", value);
-                    }}
-                    options={[
-                      "Fresher",
-                      "Intermediate",
-                      "Advanced",
-                      "Professional",
-                    ]}
-                    required={true}
-                    error={errors.knowledgeOfShareMarket}
-                    icon={<BookIcon />}
-                  />
-
-                  {/* How did you know about us with "Other" option */}
-                  <DropdownField
-                    label="How did you know about us?"
-                    name="howDidYouKnow"
-                    value={formData.howDidYouKnow}
-                    onChange={(value) => {
-                      handleChange("howDidYouKnow", value);
-                      // Clear custom field if not "Other"
-                      if (value !== "Other") {
-                        handleChange("customHowDidYouKnow", "");
-                      }
-                    }}
-                    options={[
-                      "Google Search",
-                      "Facebook",
-                      "Instagram",
-                      "LinkedIn",
-                      "Friend/Family",
-                      "Advertisement",
-                      "Other",
-                    ]}
-                    required
-                    error={errors.howDidYouKnow}
-                    icon={<ClipboardIcon />}
-                  />
-
-                  {/* Custom "How did you know" Input - Shows when "Other" is selected */}
-                  {formData.howDidYouKnow === "Other" && (
-                    <Field
-                      label="Specify Source"
-                      name="customHowDidYouKnow"
-                      value={formData.customHowDidYouKnow}
-                      onChange={(value) =>
-                        handleChange("customHowDidYouKnow", value)
-                      }
-                      required
-                      placeholder="Enter how you knew about us"
-                      error={errors.customHowDidYouKnow}
-                      icon={<ClipboardIcon />}
-                    />
-                  )}
-
-                  <DateField
-                    label="Call Back Date"
-                    name="callBackDate"
-                    value={formData.callBackDate}
-                    onChange={(value) => handleChange("callBackDate", value)}
-                    error={errors.callBackDate}
-                    required
-                    icon={<CalendarIcon />}
-                  />
-
-                  <DateField
-                    label="Deposit Inward Date"
-                    name="depositInwardDate"
-                    value={formData.depositInwardDate}
-                    required
-                    onChange={(value) =>
-                      handleChange("depositInwardDate", value)
-                    }
-                    error={errors.depositInwardDate}
-                    icon={<CalendarIcon />}
-                  />
-
-                  <DateField
-                    label="Deposit Outward Date"
-                    name="depositOutwardDate"
-                    value={formData.depositOutwardDate}
-                    onChange={(value) =>
-                      handleChange("depositOutwardDate", value)
-                    }
-                    error={errors.depositOutwardDate}
-                    required
-                    icon={<CalendarIcon />}
-                  />
-
-                  {/* Info Card */}
-                </div>
-              </div>
-              <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex gap-3">
-                  <svg
-                    className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <div>
-                    <h4 className="text-sm font-semibold text-blue-900 mb-1">
-                      Important Note
-                    </h4>
-                    <p className="text-xs text-blue-700 leading-relaxed">
-                      Please ensure all information is accurate before
-                      submitting. Fields marked with * are mandatory. You can
-                      save this as a draft and complete it later.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="px-6 py-4 bg-gray-50 rounded-b-xl border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4">
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="w-full sm:w-auto order-2 sm:order-1 px-6 py-2.5 bg-white border-2 border-gray-300 text-gray-700 font-medium rounded-lg
-                hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200
-                transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isSubmitting}
-              >
-                Cancel
-              </button>
-
-              <div className="flex gap-3 w-full sm:w-auto order-1 sm:order-2">
-                <button
-                  type="submit"
-                  className="flex-1 sm:flex-none px-6 py-2.5 bg-green-600 text-white font-medium rounded-lg
-                  hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-400
-                  transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
-                  flex items-center justify-center gap-2"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <svg
-                        className="animate-spin h-5 w-5 text-white"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        />
-                      </svg>
-                      Submitting...
-                    </>
-                  ) : (
-                    "Submit"
-                  )}
-                </button>
-              </div>
-            </div>
-          </form>
         </div>
 
-        {/* Toast Notification */}
-        {toast && (
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            onClose={() => setToast(null)}
-          />
-        )}
-
-        {/* Cancel Confirmation Modal */}
-        {showCancelConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="p-3 bg-red-100 rounded-full">
-                  <svg
-                    className="w-6 h-6 text-red-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
-                  </svg>
+        {/* Form */}
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white rounded-b-xl shadow-sm border-x border-b border-gray-200"
+          noValidate
+        >
+          <div className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Left Column - Contact Information */}
+              <div className="space-y-5">
+                <div className="flex items-center gap-2 pb-3 border-b-2 border-green-500">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <UserIcon />
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Contact Information
+                  </h2>
                 </div>
+                <Field
+                  label="Full Name"
+                  name="fullName"
+                  value={formData.fullName}
+                  onChange={(value) => handleChange("fullName", value)}
+                  onBlur={() => handleBlur("fullName")}
+                  required
+                  placeholder="Enter full name"
+                  error={touched.fullName ? errors.fullName : ""}
+                  icon={<UserIcon />}
+                  maxLength={100}
+                />
+                <Field
+                  label="Mobile Number"
+                  name="mobile"
+                  value={formData.mobile}
+                  onChange={(value) => handleChange("mobile", value)}
+                  onBlur={() => handleBlur("mobile")}
+                  required
+                  placeholder="Enter 10-digit mobile number"
+                  type="tel"
+                  error={touched.mobile ? errors.mobile : ""}
+                  icon={<PhoneIcon />}
+                  maxLength={10}
+                />
+                <Field
+                  label="Alternate Mobile Number"
+                  name="alternateMobile"
+                  value={formData.alternateMobile}
+                  onChange={(value) => handleChange("alternateMobile", value)}
+                  onBlur={() => handleBlur("alternateMobile")}
+                  placeholder="Enter alternate number (optional)"
+                  type="tel"
+                  error={touched.alternateMobile ? errors.alternateMobile : ""}
+                  icon={<PhoneIcon />}
+                  maxLength={10}
+                />
+                <Field
+                  label="Email Address"
+                  name="email"
+                  value={formData.email}
+                  onChange={(value) => handleChange("email", value)}
+                  onBlur={() => handleBlur("email")}
+                  placeholder="example@email.com"
+                  type="email"
+                  required
+                  error={touched.email ? errors.email : ""}
+                  icon={<EmailIcon />}
+                  maxLength={100}
+                />
+                <TextAreaField
+                  label="Address"
+                  name="address"
+                  value={formData.address}
+                  onChange={(value) => handleChange("address", value)}
+                  onBlur={() => handleBlur("address")}
+                  placeholder="Enter complete address"
+                  error={touched.address ? errors.address : ""}
+                  required
+                  rows={3}
+                />
+                <Field
+                  label="Aadhar Number"
+                  name="aadharNumber"
+                  value={formData.aadharNumber}
+                  onChange={(value) => handleChange("aadharNumber", value)}
+                  onBlur={() => handleBlur("aadharNumber")}
+                  placeholder="XXXX XXXX XXXX"
+                  required
+                  error={touched.aadharNumber ? errors.aadharNumber : ""}
+                  icon={<CardIcon />}
+                  maxLength={14}
+                />
+                <Field
+                  label="PAN Number"
+                  name="panNumber"
+                  value={formData.panNumber}
+                  onChange={(value) => handleChange("panNumber", value)}
+                  onBlur={() => handleBlur("panNumber")}
+                  placeholder="ABCDE1234F"
+                  error={touched.panNumber ? errors.panNumber : ""}
+                  icon={<CardIcon />}
+                  maxLength={10}
+                  required
+                />
+                <Field
+                  label="Demat Account ID 1"
+                  name="demateAccount1"
+                  value={formData.demateAccount1}
+                  onChange={(value) => handleChange("demateAccount1", value)}
+                  onBlur={() => handleBlur("demateAccount1")}
+                  placeholder="Enter account ID"
+                  required
+                  error={touched.demateAccount1 ? errors.demateAccount1 : ""}
+                  icon={<ClipboardIcon />}
+                  maxLength={20}
+                />
+                <Field
+                  label="Demat Account ID 2"
+                  name="demateAccount2"
+                  value={formData.demateAccount2}
+                  onChange={(value) => handleChange("demateAccount2", value)}
+                  onBlur={() => handleBlur("demateAccount2")}
+                  placeholder="Enter account ID (optional)"
+                  error={touched.demateAccount2 ? errors.demateAccount2 : ""}
+                  icon={<ClipboardIcon />}
+                  maxLength={20}
+                />
+              </div>
+
+              {/* Right Column - Enquiry Details */}
+              <div className="space-y-5">
+                <div className="flex items-center gap-2 pb-3 border-b-2 border-blue-500">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <ClipboardIcon />
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Enquiry Details
+                  </h2>
+                </div>
+                <DropdownField
+                  label="Select Enquiry State"
+                  name="enquiryState"
+                  value={formData.enquiryState}
+                  onChange={(value) => handleChange("enquiryState", value)}
+                  options={[
+                    "Andhra Pradesh",
+                    "Arunachal Pradesh",
+                    "Assam",
+                    "Bihar",
+                    "Chhattisgarh",
+                    "Goa",
+                    "Gujarat",
+                    "Haryana",
+                    "Himachal Pradesh",
+                    "Jharkhand",
+                    "Karnataka",
+                    "Kerala",
+                    "Madhya Pradesh",
+                    "Maharashtra",
+                    "Manipur",
+                    "Meghalaya",
+                    "Mizoram",
+                    "Nagaland",
+                    "Odisha",
+                    "Punjab",
+                    "Rajasthan",
+                    "Sikkim",
+                    "Tamil Nadu",
+                    "Telangana",
+                    "Tripura",
+                    "Uttar Pradesh",
+                    "Uttarakhand",
+                    "West Bengal",
+                    "Andaman and Nicobar Islands",
+                    "Chandigarh",
+                    "Dadra and Nagar Haveli and Daman and Diu",
+                    "Delhi",
+                    "Jammu and Kashmir",
+                    "Ladakh",
+                    "Lakshadweep",
+                    "Puducherry",
+                  ]}
+                  required
+                  error={touched.enquiryState ? errors.enquiryState : ""}
+                  icon={<ClipboardIcon />}
+                />
+                <DropdownField
+                  label="Source of Enquiry"
+                  name="sourceOfEnquiry"
+                  value={formData.sourceOfEnquiry}
+                  onChange={(value) => handleChange("sourceOfEnquiry", value)}
+                  options={[
+                    "Phone Call",
+                    "Walk-in",
+                    "Referral",
+                    "Social Media",
+                    "Email",
+                    "Advertisement",
+                  ]}
+                  required
+                  error={touched.sourceOfEnquiry ? errors.sourceOfEnquiry : ""}
+                  icon={<ClipboardIcon />}
+                />
+                <DropdownField
+                  label="Interested Status"
+                  name="interestedStatus"
+                  value={formData.interestedStatus}
+                  onChange={(value) => handleChange("interestedStatus", value)}
+                  options={[
+                    "100% Interested",
+                    "75% Interested",
+                    "50% Interested",
+                    "25% Interested",
+                    "0% Interested",
+                  ]}
+                  required
+                  error={
+                    touched.interestedStatus ? errors.interestedStatus : ""
+                  }
+                  icon={<ClipboardIcon />}
+                />
+                <DropdownField
+                  label="Status"
+                  name="status"
+                  value={formData.status}
+                  onChange={(value) => handleChange("status", value)}
+                  options={["In Process", "Confirmed", "Pending"]}
+                  required={true}
+                  error={touched.status ? errors.status : ""}
+                  icon={<StatusIcon />}
+                />
+                <DropdownField
+                  label="Profession"
+                  name="profession"
+                  value={formData.profession}
+                  onChange={(value) => {
+                    handleChange("profession", value);
+                    if (value !== "Other") {
+                      handleChange("customProfession", "");
+                    }
+                  }}
+                  options={[
+                    "Farmer",
+                    "Business",
+                    "Traider",
+                    "Self-Employed",
+                    "Student",
+                    "Retired",
+                    "Other",
+                  ]}
+                  required={true}
+                  error={touched.profession ? errors.profession : ""}
+                  icon={<BriefcaseIcon />}
+                />
+                {formData.profession === "Other" && (
+                  <Field
+                    label="Specify Profession"
+                    name="customProfession"
+                    value={formData.customProfession}
+                    onChange={(value) =>
+                      handleChange("customProfession", value)
+                    }
+                    onBlur={() => handleBlur("customProfession")}
+                    required
+                    placeholder="Enter your profession"
+                    error={
+                      touched.customProfession ? errors.customProfession : ""
+                    }
+                    icon={<BriefcaseIcon />}
+                  />
+                )}
+                <DropdownField
+                  label="Knowledge of Share Market"
+                  name="knowledgeOfShareMarket"
+                  value={formData.knowledgeOfShareMarket}
+                  onChange={(value) =>
+                    handleChange("knowledgeOfShareMarket", value)
+                  }
+                  options={[
+                    "Fresher",
+                    "Intermediate",
+                    "Advanced",
+                    "Professional",
+                  ]}
+                  required={true}
+                  error={
+                    touched.knowledgeOfShareMarket
+                      ? errors.knowledgeOfShareMarket
+                      : ""
+                  }
+                  icon={<BookIcon />}
+                />
+                <DropdownField
+                  label="How did you know about us?"
+                  name="howDidYouKnow"
+                  value={formData.howDidYouKnow}
+                  onChange={(value) => {
+                    handleChange("howDidYouKnow", value);
+                    if (value !== "Other") {
+                      handleChange("customHowDidYouKnow", "");
+                    }
+                  }}
+                  options={[
+                    "Google Search",
+                    "Facebook",
+                    "Instagram",
+                    "LinkedIn",
+                    "Friend/Family",
+                    "Advertisement",
+                    "Other",
+                  ]}
+                  required
+                  error={touched.howDidYouKnow ? errors.howDidYouKnow : ""}
+                  icon={<ClipboardIcon />}
+                />
+                {formData.howDidYouKnow === "Other" && (
+                  <Field
+                    label="Specify Source"
+                    name="customHowDidYouKnow"
+                    value={formData.customHowDidYouKnow}
+                    onChange={(value) =>
+                      handleChange("customHowDidYouKnow", value)
+                    }
+                    onBlur={() => handleBlur("customHowDidYouKnow")}
+                    required
+                    placeholder="Enter how you knew about us"
+                    error={
+                      touched.customHowDidYouKnow
+                        ? errors.customHowDidYouKnow
+                        : ""
+                    }
+                    icon={<ClipboardIcon />}
+                  />
+                )}
+                <DateField
+                  label="Call Back Date"
+                  name="callBackDate"
+                  value={formData.callBackDate}
+                  onChange={(value) => handleChange("callBackDate", value)}
+                  error={touched.callBackDate ? errors.callBackDate : ""}
+                  required
+                  icon={<CalendarIcon />}
+                  min={today}
+                />
+                <DateField
+                  label="Deposit Inward Date"
+                  name="depositInwardDate"
+                  value={formData.depositInwardDate}
+                  required
+                  onChange={(value) => handleChange("depositInwardDate", value)}
+                  error={
+                    touched.depositInwardDate ? errors.depositInwardDate : ""
+                  }
+                  icon={<CalendarIcon />}
+                />
+                <DateField
+                  label="Deposit Outward Date"
+                  name="depositOutwardDate"
+                  value={formData.depositOutwardDate}
+                  onChange={(value) =>
+                    handleChange("depositOutwardDate", value)
+                  }
+                  error={
+                    touched.depositOutwardDate ? errors.depositOutwardDate : ""
+                  }
+                  required
+                  icon={<CalendarIcon />}
+                  min={formData.depositInwardDate || today}
+                />
+              </div>
+            </div>
+
+            <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex gap-3">
+                <svg
+                  className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                    clipRule="evenodd"
+                  />
+                </svg>
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">
-                    Discard Changes?
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    All unsaved changes will be lost
+                  <h4 className="text-sm font-semibold text-blue-900 mb-1">
+                    Important Note
+                  </h4>
+                  <p className="text-xs text-blue-700 leading-relaxed">
+                    All data is validated and stored securely. Fields marked
+                    with * are mandatory. Aadhar, PAN, mobile number, and email
+                    must be unique.
                   </p>
                 </div>
               </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setShowCancelConfirm(false)}
-                  className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Keep Editing
-                </button>
-                <button
-                  onClick={resetForm}
-                  className="flex-1 px-4 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
-                >
-                  Discard
-                </button>
-              </div>
             </div>
           </div>
-        )}
+
+          {/* Action Buttons */}
+          <div className="px-6 py-4 bg-gray-50 rounded-b-xl border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="w-full sm:w-auto order-2 sm:order-1 px-6 py-2.5 bg-white border-2 border-gray-300 text-gray-700 font-medium rounded-lg
+              hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200
+              transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSubmitting}
+            >
+              Cancel
+            </button>
+            <div className="flex gap-3 w-full sm:w-auto order-1 sm:order-2">
+              <button
+                type="submit"
+                className="flex-1 sm:flex-none px-6 py-2.5 bg-green-600 text-white font-medium rounded-lg
+                hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-400
+                transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
+                flex items-center justify-center gap-2"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <svg
+                      className="animate-spin h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Submitting...
+                  </>
+                ) : (
+                  "Submit Enquiry"
+                )}
+              </button>
+            </div>
+          </div>
+        </form>
       </div>
-    </Layout>
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="p-3 bg-red-100 rounded-full">
+                <svg
+                  className="w-6 h-6 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">
+                  Discard Changes?
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  All unsaved changes will be lost
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowCancelConfirm(false)}
+                className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Keep Editing
+              </button>
+              <button
+                onClick={resetForm}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
+// Export utility functions for use in other components
+export { storageUtils, generateUniqueId };
+export type { EnquiryData };
 export default AddEnquiry;
