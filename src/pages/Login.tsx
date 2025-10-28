@@ -158,26 +158,14 @@ const Login: React.FC = () => {
               )}
             </button>
           </form>
-
-          {/* Default Credentials Info */}
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h4 className="text-sm font-semibold text-blue-900 mb-2">
-              Default Login Credentials
-            </h4>
-            <div className="text-xs text-blue-700 space-y-1">
-              <p>
-                <span className="font-medium">Admin:</span> admin / admin123
-              </p>
-              <p className="text-blue-600 mt-2">
-                💡 Change default password after first login
-              </p>
-            </div>
-          </div>
         </div>
 
         {/* Footer */}
         <p className="text-center text-sm text-gray-600 mt-6">
           © 2024 Enquiry Management System. All rights reserved.
+        </p>
+        <p className="text-center text-sm text-gray-600 mt-6">
+          © By Kali Byte Solutions
         </p>
       </div>
     </div>

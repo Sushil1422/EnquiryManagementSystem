@@ -198,35 +198,109 @@ const storageUtils = {
     return enquiries.filter((enq) => enq.status === status);
   },
 
-  // Check if Aadhar number exists
-  isAadharExists: (aadhar: string): boolean => {
+  // Enhanced Aadhar check with better formatting
+  isAadharExists: (aadhar: string, excludeId?: string): boolean => {
     const enquiries = storageUtils.getAllEnquiries();
     const cleanAadhar = aadhar.replace(/\s/g, "");
     return enquiries.some(
-      (enq) => enq.aadharNumber.replace(/\s/g, "") === cleanAadhar
+      (enq) =>
+        enq.id !== excludeId &&
+        enq.aadharNumber.replace(/\s/g, "") === cleanAadhar
     );
   },
 
-  // Check if PAN number exists
-  isPANExists: (pan: string): boolean => {
+  // Enhanced PAN check
+  isPANExists: (pan: string, excludeId?: string): boolean => {
+    const enquiries = storageUtils.getAllEnquiries();
+    const cleanPAN = pan.toUpperCase().trim();
+    return enquiries.some(
+      (enq) =>
+        enq.id !== excludeId && enq.panNumber.toUpperCase().trim() === cleanPAN
+    );
+  },
+
+  // Enhanced Mobile check
+  isMobileExists: (mobile: string, excludeId?: string): boolean => {
     const enquiries = storageUtils.getAllEnquiries();
     return enquiries.some(
-      (enq) => enq.panNumber.toUpperCase() === pan.toUpperCase()
+      (enq) => enq.id !== excludeId && enq.mobile === mobile
     );
   },
 
-  // Check if mobile number exists
-  isMobileExists: (mobile: string): boolean => {
+  // Enhanced Email check
+  isEmailExists: (email: string, excludeId?: string): boolean => {
     const enquiries = storageUtils.getAllEnquiries();
-    return enquiries.some((enq) => enq.mobile === mobile);
-  },
-
-  // Check if email exists
-  isEmailExists: (email: string): boolean => {
-    const enquiries = storageUtils.getAllEnquiries();
+    const cleanEmail = email.toLowerCase().trim();
     return enquiries.some(
-      (enq) => enq.email.toLowerCase() === email.toLowerCase()
+      (enq) =>
+        enq.id !== excludeId && enq.email.toLowerCase().trim() === cleanEmail
     );
+  },
+
+  // Check for any duplicates
+  checkDuplicates: (
+    formData: Partial<FormData>
+  ): {
+    field: string;
+    message: string;
+  }[] => {
+    const duplicates: { field: string; message: string }[] = [];
+
+    if (
+      formData.aadharNumber &&
+      storageUtils.isAadharExists(formData.aadharNumber)
+    ) {
+      duplicates.push({
+        field: "aadharNumber",
+        message: "This Aadhar number is already registered",
+      });
+    }
+
+    if (formData.panNumber && storageUtils.isPANExists(formData.panNumber)) {
+      duplicates.push({
+        field: "panNumber",
+        message: "This PAN number is already registered",
+      });
+    }
+
+    if (formData.mobile && storageUtils.isMobileExists(formData.mobile)) {
+      duplicates.push({
+        field: "mobile",
+        message: "This mobile number is already registered",
+      });
+    }
+
+    if (formData.email && storageUtils.isEmailExists(formData.email)) {
+      duplicates.push({
+        field: "email",
+        message: "This email address is already registered",
+      });
+    }
+
+    return duplicates;
+  },
+
+  // Get existing enquiry details by Aadhar or PAN
+  getExistingEnquiry: (aadhar?: string, pan?: string): EnquiryData | null => {
+    const enquiries = storageUtils.getAllEnquiries();
+
+    if (aadhar) {
+      const cleanAadhar = aadhar.replace(/\s/g, "");
+      const found = enquiries.find(
+        (enq) => enq.aadharNumber.replace(/\s/g, "") === cleanAadhar
+      );
+      if (found) return found;
+    }
+
+    if (pan) {
+      const cleanPAN = pan.toUpperCase().trim();
+      const found = enquiries.find(
+        (enq) => enq.panNumber.toUpperCase().trim() === cleanPAN
+      );
+      if (found) return found;
+    }
+
+    return null;
   },
 };
 
@@ -295,7 +369,6 @@ const ValidationHelpers = {
     if (!/^\d{12}$/.test(cleanAadhar)) {
       return "Aadhar number must be exactly 12 digits";
     }
-    // Verhoeff algorithm check (optional - basic implementation)
     if (cleanAadhar === "000000000000" || cleanAadhar === "111111111111") {
       return "Invalid Aadhar number format";
     }
@@ -311,7 +384,6 @@ const ValidationHelpers = {
     if (!panRegex.test(pan.toUpperCase())) {
       return "Invalid PAN format (e.g., ABCDE1234F)";
     }
-    // Check for valid 4th character (P for individual, C for company, etc.)
     const fourthChar = pan.charAt(3).toUpperCase();
     const validFourthChars = ["P", "C", "H", "F", "A", "T", "B", "L", "J", "G"];
     if (!validFourthChars.includes(fourthChar)) {
@@ -342,11 +414,11 @@ const ValidationHelpers = {
     if (!account.trim()) {
       return isRequired ? "Demat account ID is required" : "";
     }
-    if (account.trim().length < 8) {
-      return "Demat account ID must be at least 8 characters";
+    if (account.trim().length < 16) {
+      return "Demat account ID must be at least 16 characters";
     }
-    if (account.trim().length > 20) {
-      return "Demat account ID must not exceed 20 characters";
+    if (account.trim().length > 16) {
+      return "Demat account ID must not exceed 16 characters";
     }
     if (!/^[A-Z0-9]+$/.test(account.toUpperCase())) {
       return "Demat account ID can only contain letters and numbers";
@@ -372,7 +444,6 @@ const ValidationHelpers = {
     if (!isFutureAllowed && selectedDate < today) {
       return `${fieldName} cannot be in the past`;
     }
-    // Check if date is not too far in the future (e.g., 2 years)
     const twoYearsFromNow = new Date();
     twoYearsFromNow.setFullYear(twoYearsFromNow.getFullYear() + 2);
     if (selectedDate > twoYearsFromNow) {
@@ -410,6 +481,8 @@ const Field: React.FC<{
   maxLength,
   pattern,
 }) => {
+  const isDuplicate = error?.includes("⚠️");
+
   return (
     <div className="flex flex-col gap-1.5 w-full">
       <label
@@ -441,7 +514,9 @@ const Field: React.FC<{
           transition-all duration-200
           ${
             error
-              ? "border-red-400 focus:ring-2 focus:ring-red-200 focus:border-red-500"
+              ? isDuplicate
+                ? "border-yellow-400 focus:ring-2 focus:ring-yellow-200 focus:border-yellow-500 bg-yellow-50"
+                : "border-red-400 focus:ring-2 focus:ring-red-200 focus:border-red-500"
               : "border-gray-300 focus:ring-2 focus:ring-green-200 focus:border-green-500"
           }
           hover:border-gray-400 focus:outline-none`}
@@ -453,7 +528,11 @@ const Field: React.FC<{
         )}
       </div>
       {error && (
-        <span className="text-xs text-red-500 flex items-center gap-1">
+        <span
+          className={`text-xs flex items-center gap-1 ${
+            isDuplicate ? "text-yellow-600 font-medium" : "text-red-500"
+          }`}
+        >
           <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
             <path
               fillRule="evenodd"
@@ -751,6 +830,118 @@ const Toast: React.FC<{
   );
 };
 
+// Duplicate Warning Modal Component
+const DuplicateWarningModal: React.FC<{
+  existingEnquiry: EnquiryData;
+  duplicateField: string;
+  onClose: () => void;
+}> = ({ existingEnquiry, duplicateField, onClose }) => {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+      <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 animate-scale-in">
+        <div className="flex items-start gap-4 mb-4">
+          <div className="p-3 bg-yellow-100 rounded-full">
+            <svg
+              className="w-6 h-6 text-yellow-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-gray-900">
+              Duplicate {duplicateField.toUpperCase()} Detected
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              This {duplicateField} already exists in our system
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+          <h4 className="text-sm font-semibold text-yellow-900 mb-3">
+            Existing Enquiry Details:
+          </h4>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Enquiry ID:</span>
+              <span className="font-medium text-gray-900">
+                {existingEnquiry.id}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Name:</span>
+              <span className="font-medium text-gray-900">
+                {existingEnquiry.fullName}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Mobile:</span>
+              <span className="font-medium text-gray-900">
+                {existingEnquiry.mobile}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Email:</span>
+              <span className="font-medium text-gray-900 truncate max-w-xs">
+                {existingEnquiry.email}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Aadhar:</span>
+              <span className="font-medium text-gray-900">
+                {existingEnquiry.aadharNumber}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">PAN:</span>
+              <span className="font-medium text-gray-900">
+                {existingEnquiry.panNumber}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Status:</span>
+              <span className="font-medium text-gray-900">
+                {existingEnquiry.status}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Created:</span>
+              <span className="font-medium text-gray-900">
+                {new Date(existingEnquiry.createdAt).toLocaleDateString()}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+          <p className="text-xs text-red-700">
+            <strong>Important:</strong> Each Aadhar and PAN number must be
+            unique. Please verify the information or update the existing enquiry
+            instead of creating a new one.
+          </p>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2.5 bg-gray-600 text-white font-medium rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Main Component
 const AddEnquiry: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
@@ -784,6 +975,11 @@ const AddEnquiry: React.FC = () => {
     type: "success" | "error";
   } | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [duplicateEnquiry, setDuplicateEnquiry] = useState<EnquiryData | null>(
+    null
+  );
+  const [duplicateField, setDuplicateField] = useState<string>("");
   const [stats, setStats] = useState({
     total: 0,
     confirmed: 0,
@@ -811,13 +1007,15 @@ const AddEnquiry: React.FC = () => {
 
   // Format PAN number
   const formatPAN = (value: string) => {
-    return value.toUpperCase().slice(0, 10);
+    return value
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 10);
   };
 
   // Handle field changes
   const handleChange = (field: keyof FormData, value: string) => {
     let formattedValue = value;
-    // Apply formatting based on field type
     if (field === "mobile" || field === "alternateMobile") {
       formattedValue = formatMobile(value);
     } else if (field === "aadharNumber") {
@@ -831,7 +1029,6 @@ const AddEnquiry: React.FC = () => {
         .slice(0, 20);
     }
     setFormData((prev) => ({ ...prev, [field]: formattedValue }));
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
     }
@@ -847,16 +1044,19 @@ const AddEnquiry: React.FC = () => {
   const validateField = (field: keyof FormData) => {
     const value = formData[field];
     let error = "";
+
     switch (field) {
       case "fullName":
         error = ValidationHelpers.validateFullName(value);
         break;
+
       case "mobile":
         error = ValidationHelpers.validateMobile(value);
         if (!error && storageUtils.isMobileExists(value)) {
-          error = "This mobile number is already registered";
+          error = "⚠️ This mobile number is already registered";
         }
         break;
+
       case "alternateMobile":
         if (value) {
           error = ValidationHelpers.validateMobile(value, "Alternate mobile");
@@ -865,30 +1065,46 @@ const AddEnquiry: React.FC = () => {
           }
         }
         break;
+
       case "email":
         error = ValidationHelpers.validateEmail(value);
         if (!error && storageUtils.isEmailExists(value)) {
-          error = "This email is already registered";
+          error = "⚠️ This email is already registered";
         }
         break;
+
       case "address":
         error = ValidationHelpers.validateAddress(value);
         break;
+
       case "aadharNumber":
         error = ValidationHelpers.validateAadhar(value);
         if (!error && storageUtils.isAadharExists(value)) {
-          error = "This Aadhar number is already registered";
+          error = "⚠️ This Aadhar number is already registered";
+          const existing = storageUtils.getExistingEnquiry(value);
+          if (existing) {
+            setDuplicateEnquiry(existing);
+            setDuplicateField("Aadhar");
+          }
         }
         break;
+
       case "panNumber":
         error = ValidationHelpers.validatePAN(value);
         if (!error && storageUtils.isPANExists(value)) {
-          error = "This PAN number is already registered";
+          error = "⚠️ This PAN number is already registered";
+          const existing = storageUtils.getExistingEnquiry(undefined, value);
+          if (existing) {
+            setDuplicateEnquiry(existing);
+            setDuplicateField("PAN");
+          }
         }
         break;
+
       case "demateAccount1":
         error = ValidationHelpers.validateDematAccount(value, true);
         break;
+
       case "demateAccount2":
         if (value) {
           error = ValidationHelpers.validateDematAccount(value, false);
@@ -897,12 +1113,15 @@ const AddEnquiry: React.FC = () => {
           }
         }
         break;
+
       case "callBackDate":
         error = ValidationHelpers.validateDate(value, "Call back date");
         break;
+
       case "depositInwardDate":
         error = ValidationHelpers.validateDate(value, "Deposit inward date");
         break;
+
       case "depositOutwardDate":
         error = ValidationHelpers.validateDate(value, "Deposit outward date");
         if (!error && formData.depositInwardDate) {
@@ -913,38 +1132,48 @@ const AddEnquiry: React.FC = () => {
           }
         }
         break;
+
       case "enquiryState":
         if (!value) error = "Please select a state";
         break;
+
       case "sourceOfEnquiry":
         if (!value) error = "Please select source of enquiry";
         break;
+
       case "interestedStatus":
         if (!value) error = "Please select interested status";
         break;
+
       case "status":
         if (!value) error = "Please select status";
         break;
+
       case "profession":
         if (!value) error = "Please select profession";
         break;
+
       case "knowledgeOfShareMarket":
         if (!value) error = "Please select knowledge level";
         break;
+
       case "howDidYouKnow":
         if (!value) error = "Please select an option";
         break;
+
       case "customHowDidYouKnow":
         if (formData.howDidYouKnow === "Other" && !value.trim()) {
           error = "Please specify how you knew about us";
         }
         break;
+
       case "customProfession":
         if (formData.profession === "Other" && !value.trim()) {
           error = "Please specify your profession";
         }
         break;
     }
+
     if (error) {
       setErrors((prev) => ({ ...prev, [field]: error }));
     } else {
@@ -960,7 +1189,6 @@ const AddEnquiry: React.FC = () => {
   // Validation
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
-    // Validate all required fields
     const fieldsToValidate: (keyof FormData)[] = [
       "fullName",
       "mobile",
@@ -988,7 +1216,6 @@ const AddEnquiry: React.FC = () => {
       }
     });
 
-    // Validate optional fields if they have values
     if (formData.alternateMobile) {
       const error = validateField("alternateMobile");
       if (error) newErrors.alternateMobile = error;
@@ -998,7 +1225,6 @@ const AddEnquiry: React.FC = () => {
       if (error) newErrors.demateAccount2 = error;
     }
 
-    // Validate conditional fields
     if (formData.howDidYouKnow === "Other") {
       const error = validateField("customHowDidYouKnow");
       if (error) newErrors.customHowDidYouKnow = error;
@@ -1016,19 +1242,65 @@ const AddEnquiry: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Mark all fields as touched
     const allTouched: Record<string, boolean> = {};
     Object.keys(formData).forEach((key) => {
       allTouched[key] = true;
     });
     setTouched(allTouched);
 
+    // Check for duplicates first
+    const duplicates = storageUtils.checkDuplicates(formData);
+
+    if (duplicates.length > 0) {
+      const duplicateErrors: FormErrors = {};
+      duplicates.forEach(({ field, message }) => {
+        duplicateErrors[field] = `⚠️ ${message}`;
+      });
+      setErrors((prev) => ({ ...prev, ...duplicateErrors }));
+
+      const firstDuplicate = duplicates[0];
+      const existing =
+        storageUtils.getExistingEnquiry(
+          firstDuplicate.field === "aadharNumber"
+            ? formData.aadharNumber
+            : undefined,
+          firstDuplicate.field === "panNumber" ? formData.panNumber : undefined
+        ) ||
+        storageUtils
+          .getAllEnquiries()
+          .find(
+            (enq) =>
+              (firstDuplicate.field === "mobile" &&
+                enq.mobile === formData.mobile) ||
+              (firstDuplicate.field === "email" &&
+                enq.email.toLowerCase() === formData.email.toLowerCase())
+          );
+
+      if (existing) {
+        setDuplicateEnquiry(existing);
+        setDuplicateField(firstDuplicate.field);
+        setShowDuplicateWarning(true);
+      }
+
+      setToast({
+        message: `Duplicate found: ${duplicates
+          .map((d) => d.field)
+          .join(", ")}. Please check the highlighted fields.`,
+        type: "error",
+      });
+
+      const firstErrorField = duplicates[0].field;
+      const element = document.getElementById(firstErrorField);
+      element?.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      return;
+    }
+
     if (!validate()) {
       setToast({
         message: "Please fix all validation errors before submitting",
         type: "error",
       });
-      // Scroll to first error
       const firstErrorField = Object.keys(errors)[0];
       if (firstErrorField) {
         const element = document.getElementById(firstErrorField);
@@ -1040,27 +1312,33 @@ const AddEnquiry: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      // Save to localStorage
-      const savedEnquiry = storageUtils.saveEnquiry(formData);
+      const finalDuplicates = storageUtils.checkDuplicates(formData);
+      if (finalDuplicates.length > 0) {
+        throw new Error(
+          "Duplicate data detected. Please verify unique fields."
+        );
+      }
 
-      // Update statistics
+      const savedEnquiry = storageUtils.saveEnquiry(formData);
       const newStats = storageUtils.getStatistics();
       setStats(newStats);
 
       console.log("Form submitted and saved:", savedEnquiry);
       setToast({
-        message: `Enquiry added successfully! ID: ${savedEnquiry.id}`,
+        message: `✅ Enquiry added successfully! ID: ${savedEnquiry.id}`,
         type: "success",
       });
 
-      // Reset form
       setTimeout(() => {
         resetForm();
       }, 1500);
     } catch (error) {
       console.error("Error saving enquiry:", error);
       setToast({
-        message: "Failed to submit enquiry. Please try again.",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to submit enquiry. Please try again.",
         type: "error",
       });
     } finally {
@@ -1109,7 +1387,6 @@ const AddEnquiry: React.FC = () => {
     setShowCancelConfirm(false);
   };
 
-  // Get today's date for min attribute
   const today = new Date().toISOString().split("T")[0];
 
   // Icons
@@ -1264,7 +1541,6 @@ const AddEnquiry: React.FC = () => {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              {/* Statistics */}
               <div className="hidden md:flex items-center gap-3 text-sm">
                 <div className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg font-medium">
                   Total: {stats.total}
@@ -1393,7 +1669,7 @@ const AddEnquiry: React.FC = () => {
                   required
                   error={touched.demateAccount1 ? errors.demateAccount1 : ""}
                   icon={<ClipboardIcon />}
-                  maxLength={20}
+                  maxLength={16}
                 />
                 <Field
                   label="Demat Account ID 2"
@@ -1404,7 +1680,7 @@ const AddEnquiry: React.FC = () => {
                   placeholder="Enter account ID (optional)"
                   error={touched.demateAccount2 ? errors.demateAccount2 : ""}
                   icon={<ClipboardIcon />}
-                  maxLength={20}
+                  maxLength={16}
                 />
               </div>
 
@@ -1670,8 +1946,11 @@ const AddEnquiry: React.FC = () => {
                   </h4>
                   <p className="text-xs text-blue-700 leading-relaxed">
                     All data is validated and stored securely. Fields marked
-                    with * are mandatory. Aadhar, PAN, mobile number, and email
-                    must be unique.
+                    with * are mandatory.{" "}
+                    <strong>
+                      Aadhar, PAN, mobile number, and email must be unique
+                    </strong>{" "}
+                    and cannot be duplicated.
                   </p>
                 </div>
               </div>
@@ -1786,6 +2065,19 @@ const AddEnquiry: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Duplicate Warning Modal */}
+      {showDuplicateWarning && duplicateEnquiry && (
+        <DuplicateWarningModal
+          existingEnquiry={duplicateEnquiry}
+          duplicateField={duplicateField}
+          onClose={() => {
+            setShowDuplicateWarning(false);
+            setDuplicateEnquiry(null);
+            setDuplicateField("");
+          }}
+        />
       )}
     </div>
   );
