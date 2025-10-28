@@ -74,7 +74,7 @@ const Login: React.FC = () => {
               </div>
             )}
 
-            {/* Default Credentials Info */}
+            {/* Default Credentials Info
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-xs font-semibold text-blue-900 mb-2">
                 Default Admin Credentials:
@@ -88,7 +88,7 @@ const Login: React.FC = () => {
                   <span className="font-mono font-bold">admin123</span>
                 </p>
               </div>
-            </div>
+            </div> */}
 
             {/* Username Field */}
             <div>
@@ -193,9 +193,8 @@ const Login: React.FC = () => {
 
           {/* Footer */}
           <div className="mt-6 text-center">
-            <p className="text-xs text-gray-500">
-              © 2025 Enquiry Management System
-            </p>
+            <p>© 2025 Enquiry Management System</p>
+            <p className="text-xs text-gray-500"> © By Kali-Byte Solutions</p>
           </div>
         </div>
       </div>
