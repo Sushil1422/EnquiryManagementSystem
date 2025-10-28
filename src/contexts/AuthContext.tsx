@@ -17,8 +17,9 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAdmin: () => boolean;
-  canDelete: () => boolean; // ✅ Added
+  canDelete: () => boolean;
   isAuthenticated: boolean;
+  isLoading: boolean; // ✅ Added
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -136,7 +137,7 @@ export const authUtils = {
     }
   },
 
-  // ✅ Check if user has delete permission
+  // Check if user has delete permission
   canDelete: (user: User | null): boolean => {
     return user?.role === "admin";
   },
@@ -147,28 +148,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // ✅ Added loading state
 
   useEffect(() => {
-    // Check for existing session on mount
-    const user = authUtils.getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
-      setIsAuthenticated(true);
-    }
+    // ✅ Check for existing session on mount
+    const initializeAuth = async () => {
+      try {
+        setIsLoading(true);
+
+        // Simulate a small delay to check session (optional, can be removed)
+        await new Promise((resolve) => setTimeout(resolve, 300));
+
+        const user = authUtils.getCurrentUser();
+        if (user) {
+          setCurrentUser(user);
+          setIsAuthenticated(true);
+        }
+      } catch (error) {
+        console.error("Error initializing auth:", error);
+      } finally {
+        setIsLoading(false); // ✅ Set loading to false after check
+      }
+    };
+
+    initializeAuth();
   }, []);
 
   const login = async (
     username: string,
     password: string
   ): Promise<boolean> => {
-    const user = authUtils.validateCredentials(username, password);
-    if (user) {
-      setCurrentUser(user);
-      setIsAuthenticated(true);
-      authUtils.setCurrentUser(user);
-      return true;
+    try {
+      setIsLoading(true); // ✅ Set loading during login
+
+      const user = authUtils.validateCredentials(username, password);
+      if (user) {
+        setCurrentUser(user);
+        setIsAuthenticated(true);
+        authUtils.setCurrentUser(user);
+        return true;
+      }
+      return false;
+    } finally {
+      setIsLoading(false); // ✅ Clear loading after login attempt
     }
-    return false;
   };
 
   const logout = () => {
@@ -181,7 +204,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     return currentUser?.role === "admin";
   };
 
-  // ✅ Check if current user can delete
   const canDelete = (): boolean => {
     return currentUser?.role === "admin";
   };
@@ -195,6 +217,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         isAdmin,
         canDelete,
         isAuthenticated,
+        isLoading, // ✅ Export isLoading
       }}
     >
       {children}

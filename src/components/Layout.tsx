@@ -12,7 +12,6 @@ import {
   X,
   ChevronDown,
   Shield,
-  User,
   Bell,
   ChevronLeft,
   ChevronRight,
