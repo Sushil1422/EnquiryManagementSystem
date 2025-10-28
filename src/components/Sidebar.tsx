@@ -1,3 +1,4 @@
+// src/components/Sidebar.tsx
 import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -16,12 +17,13 @@ import {
 import { TrendingUp, Shield, User } from "lucide-react";
 import { storageUtils } from "../utils/localStorage";
 import { useAuth } from "../contexts/AuthContext";
+import { useSidebar } from "../contexts/SidebarContext";
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentUser, isAdmin, logout } = useAuth();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isCollapsed, toggleSidebar } = useSidebar(); // Use context instead of local state
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [statistics, setStatistics] = useState({
     totalEnquiries: 0,
@@ -146,12 +148,10 @@ const Sidebar: React.FC = () => {
     },
   ].filter((item) => item.show);
 
-  // Group menu items
   const mainMenuItems = menuItems.filter((item) => item.group === "main");
   const followUpItems = menuItems.filter((item) => item.group === "followups");
   const adminItems = menuItems.filter((item) => item.group === "admin");
 
-  // Get user initials
   const getUserInitials = () => {
     if (!currentUser?.fullName) return "U";
     const names = currentUser.fullName.split(" ");
@@ -177,9 +177,9 @@ const Sidebar: React.FC = () => {
             </div>
           )}
           <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            onClick={toggleSidebar}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            title={isCollapsed ? "Expand" : "Collapse"}
+            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
             {isCollapsed ? (
               <FaChevronRight className="w-4 h-4 text-gray-600" />
@@ -263,7 +263,6 @@ const Sidebar: React.FC = () => {
             ))}
           </ul>
 
-          {/* Divider */}
           {!isCollapsed && (
             <div className="my-3 border-t border-gray-200"></div>
           )}

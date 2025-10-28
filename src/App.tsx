@@ -10,12 +10,21 @@ import AllFollowUps from "./pages/AllFollowUps";
 import UserManagement from "./pages/UserManagement";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./contexts/AuthContext";
+import { SidebarProvider, useSidebar } from "./contexts/SidebarContext";
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
+  const { isCollapsed } = useSidebar();
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex-1 md:ml-64">{children}</div>
+      <div
+        className={`flex-1 transition-all duration-300 ${
+          isCollapsed ? "md:ml-20" : "md:ml-64"
+        }`}
+      >
+        {children}
+      </div>
     </div>
   );
 };
@@ -23,72 +32,74 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
+      <SidebarProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
 
-          <Route element={<ProtectedRoute />}>
-            <Route
-              path="/"
-              element={
-                <AppLayout>
-                  <Dashboard />
-                </AppLayout>
-              }
-            />
-            <Route
-              path="/add-enquiry"
-              element={
-                <AppLayout>
-                  <AddEnquiry />
-                </AppLayout>
-              }
-            />
-            <Route
-              path="/view-enquiry"
-              element={
-                <AppLayout>
-                  <ViewEnquiry />
-                </AppLayout>
-              }
-            />
-            <Route
-              path="/search-enquiry"
-              element={
-                <AppLayout>
-                  <SearchEnquiry />
-                </AppLayout>
-              }
-            />
-            <Route
-              path="/today-followups"
-              element={
-                <AppLayout>
-                  <TodayFollowUps />
-                </AppLayout>
-              }
-            />
-            <Route
-              path="/all-followups"
-              element={
-                <AppLayout>
-                  <AllFollowUps />
-                </AppLayout>
-              }
-            />
-            <Route
-              path="/user-management"
-              element={
-                <AppLayout>
-                  <UserManagement />
-                </AppLayout>
-              }
-            />
-          </Route>
+            <Route element={<ProtectedRoute />}>
+              <Route
+                path="/"
+                element={
+                  <AppLayout>
+                    <Dashboard />
+                  </AppLayout>
+                }
+              />
+              <Route
+                path="/add-enquiry"
+                element={
+                  <AppLayout>
+                    <AddEnquiry />
+                  </AppLayout>
+                }
+              />
+              <Route
+                path="/view-enquiry"
+                element={
+                  <AppLayout>
+                    <ViewEnquiry />
+                  </AppLayout>
+                }
+              />
+              <Route
+                path="/search-enquiry"
+                element={
+                  <AppLayout>
+                    <SearchEnquiry />
+                  </AppLayout>
+                }
+              />
+              <Route
+                path="/today-followups"
+                element={
+                  <AppLayout>
+                    <TodayFollowUps />
+                  </AppLayout>
+                }
+              />
+              <Route
+                path="/all-followups"
+                element={
+                  <AppLayout>
+                    <AllFollowUps />
+                  </AppLayout>
+                }
+              />
+              <Route
+                path="/user-management"
+                element={
+                  <AppLayout>
+                    <UserManagement />
+                  </AppLayout>
+                }
+              />
+            </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </SidebarProvider>
     </AuthProvider>
   );
 }

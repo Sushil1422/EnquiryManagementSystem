@@ -14,10 +14,14 @@ import {
   Shield,
   User,
   Bell,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
+import { useSidebar } from "../contexts/SidebarContext";
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser, logout } = useAuth();
+  const { isCollapsed, toggleSidebar } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -69,22 +73,54 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return location.pathname === path;
   };
 
+  // Get user initials
+  const getUserInitials = () => {
+    if (!currentUser?.fullName) return "U";
+    const names = currentUser.fullName.split(" ");
+    if (names.length >= 2) {
+      return (names[0][0] + names[1][0]).toUpperCase();
+    }
+    return currentUser.fullName.substring(0, 2).toUpperCase();
+  };
+
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex md:flex-shrink-0">
-        <div className="flex flex-col w-64 bg-gradient-to-b from-green-800 to-green-900 border-r border-green-700">
+      <aside
+        className={`hidden md:flex md:flex-shrink-0 transition-all duration-300 ${
+          isCollapsed ? "w-20" : "w-64"
+        }`}
+      >
+        <div className="flex flex-col w-full bg-gradient-to-b from-green-800 to-green-900 border-r border-green-700">
           {/* Logo */}
-          <div className="flex items-center justify-center h-16 px-4 bg-green-900 border-b border-green-700">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+          <div className="flex items-center justify-between h-16 px-4 bg-green-900 border-b border-green-700">
+            {!isCollapsed && (
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Shield size={24} className="text-green-600" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-white">EnquiryPro</h1>
+                  <p className="text-xs text-green-300">Management System</p>
+                </div>
+              </div>
+            )}
+            {isCollapsed && (
+              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center mx-auto">
                 <Shield size={24} className="text-green-600" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-white">EnquiryPro</h1>
-                <p className="text-xs text-green-300">Management System</p>
-              </div>
-            </div>
+            )}
+            <button
+              onClick={toggleSidebar}
+              className="p-2 text-green-100 hover:bg-green-700 rounded-lg transition-colors ml-auto"
+              title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            >
+              {isCollapsed ? (
+                <ChevronRight size={20} />
+              ) : (
+                <ChevronLeft size={20} />
+              )}
+            </button>
           </div>
 
           {/* Navigation */}
@@ -97,7 +133,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   isActive(item.path)
                     ? "bg-white text-green-700 shadow-md"
                     : "text-green-100 hover:bg-green-700 hover:text-white"
-                }`}
+                } ${isCollapsed ? "justify-center" : ""}`}
+                title={isCollapsed ? item.label : ""}
               >
                 <span
                   className={
@@ -106,33 +143,54 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 >
                   {item.icon}
                 </span>
-                {item.label}
+                {!isCollapsed && <span>{item.label}</span>}
               </Link>
             ))}
           </nav>
 
           {/* User Info */}
           <div className="p-4 border-t border-green-700 bg-green-900">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-700 rounded-full flex items-center justify-center">
-                <User size={20} className="text-green-200" />
+            {!isCollapsed ? (
+              <>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-700 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-bold text-white">
+                      {getUserInitials()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">
+                      {currentUser?.fullName}
+                    </p>
+                    <p className="text-xs text-green-300 truncate">
+                      {currentUser?.role === "admin" ? "Administrator" : "User"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  <LogOut size={16} />
+                  Logout
+                </button>
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-10 h-10 bg-green-700 rounded-full flex items-center justify-center">
+                  <span className="text-sm font-bold text-white">
+                    {getUserInitials()}
+                  </span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="p-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+                  title="Logout"
+                >
+                  <LogOut size={16} />
+                </button>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">
-                  {currentUser?.fullName}
-                </p>
-                <p className="text-xs text-green-300 truncate">
-                  {currentUser?.role === "admin" ? "Administrator" : "User"}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
-            >
-              <LogOut size={16} />
-              Logout
-            </button>
+            )}
           </div>
         </div>
       </aside>
@@ -200,7 +258,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <div className="p-4 border-t border-green-700 bg-green-900">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-green-700 rounded-full flex items-center justify-center">
-                <User size={20} className="text-green-200" />
+                <span className="text-sm font-bold text-white">
+                  {getUserInitials()}
+                </span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white truncate">
@@ -244,7 +304,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-                <User size={16} className="text-white" />
+                <span className="text-xs font-bold text-white">
+                  {getUserInitials()}
+                </span>
               </div>
             </button>
 
@@ -314,7 +376,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 className="flex items-center gap-3 p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <div className="w-9 h-9 bg-green-600 rounded-full flex items-center justify-center">
-                  <User size={18} className="text-white" />
+                  <span className="text-sm font-bold text-white">
+                    {getUserInitials()}
+                  </span>
                 </div>
                 <div className="text-left">
                   <p className="text-sm font-medium text-gray-900">
@@ -375,7 +439,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </div>
         </header>
 
-        {/* Main Content Area - NO PADDING HERE */}
+        {/* Main Content Area */}
         <main className="flex-1 overflow-auto bg-gray-50">{children}</main>
       </div>
     </div>

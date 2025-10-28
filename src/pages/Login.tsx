@@ -1,7 +1,8 @@
+// src/pages/Login.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { Lock, User, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, Lock, User, Shield } from "lucide-react";
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState("");
@@ -9,63 +10,85 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
+    // Basic validation
     if (!username.trim() || !password.trim()) {
       setError("Please enter both username and password");
+      setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
+    console.log("Attempting login with:", { username, password }); // Debug
 
-    try {
-      const success = await login(username, password);
-      if (success) {
-        navigate("/");
-      } else {
-        setError("Invalid username or password");
-      }
-    } catch (err) {
-      setError("An error occurred. Please try again.");
-    } finally {
+    // Attempt login
+    const success = login(username.trim(), password);
+
+    if (await success) {
+      console.log("Login successful, navigating to dashboard");
+      navigate("/");
+    } else {
+      setError("Invalid username or password");
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo/Header */}
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-white to-blue-50 p-4">
+      <div className="max-w-md w-full">
+        {/* Logo and Title */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-green-600 rounded-full mb-4">
-            <Lock className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-green-600 rounded-2xl shadow-lg mb-4">
+            <Shield size={32} className="text-white" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Enquiry Management System
+            Welcome Back
           </h1>
-          <p className="text-gray-600">Sign in to your account</p>
+          <p className="text-gray-600">Sign in to Enquiry Management System</p>
         </div>
 
-        {/* Login Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        {/* Login Form */}
+        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Error Alert */}
+            {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h3 className="text-sm font-semibold text-red-800">
-                    Login Failed
-                  </h3>
-                  <p className="text-sm text-red-700 mt-1">{error}</p>
-                </div>
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                {error}
               </div>
             )}
+
+            {/* Default Credentials Info */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-xs font-semibold text-blue-900 mb-2">
+                Default Admin Credentials:
+              </p>
+              <div className="text-xs text-blue-700 space-y-1">
+                <p>
+                  Username: <span className="font-mono font-bold">admin</span>
+                </p>
+                <p>
+                  Password:{" "}
+                  <span className="font-mono font-bold">admin123</span>
+                </p>
+              </div>
+            </div>
 
             {/* Username Field */}
             <div>
@@ -76,17 +99,17 @@ const Login: React.FC = () => {
                 Username
               </label>
               <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                  <User size={20} />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <User size={20} className="text-gray-400" />
                 </div>
                 <input
                   id="username"
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
                   placeholder="Enter your username"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
-                  disabled={isLoading}
+                  required
                 />
               </div>
             </div>
@@ -100,25 +123,34 @@ const Login: React.FC = () => {
                 Password
               </label>
               <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                  <Lock size={20} />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock size={20} className="text-gray-400" />
                 </div>
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
                   placeholder="Enter your password"
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
-                  disabled={isLoading}
+                  required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  disabled={isLoading}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
                 >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  {showPassword ? (
+                    <EyeOff
+                      size={20}
+                      className="text-gray-400 hover:text-gray-600"
+                    />
+                  ) : (
+                    <Eye
+                      size={20}
+                      className="text-gray-400 hover:text-gray-600"
+                    />
+                  )}
                 </button>
               </div>
             </div>
@@ -127,7 +159,7 @@ const Login: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full bg-green-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
@@ -158,15 +190,14 @@ const Login: React.FC = () => {
               )}
             </button>
           </form>
-        </div>
 
-        {/* Footer */}
-        <p className="text-center text-sm text-gray-600 mt-6">
-          © 2024 Enquiry Management System. All rights reserved.
-        </p>
-        <p className="text-center text-sm text-gray-600 mt-6">
-          © By Kali Byte Solutions
-        </p>
+          {/* Footer */}
+          <div className="mt-6 text-center">
+            <p className="text-xs text-gray-500">
+              © 2025 Enquiry Management System
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
