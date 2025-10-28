@@ -891,7 +891,7 @@ const EditSelect: React.FC<{
       onChange={(e) => onChange(e.target.value)}
       className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:outline-none border-gray-300 focus:ring-green-200 focus:border-green-500"
     >
-      <option value="">Select an option</option>
+      {/* <option value="">Select an option</option> */}
       {options.map((option) => (
         <option key={option} value={option}>
           {option}

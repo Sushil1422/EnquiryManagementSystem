@@ -1,4 +1,3 @@
-// src/components/Sidebar.tsx
 import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -14,21 +13,29 @@ import {
   FaSignOutAlt,
   FaBell,
 } from "react-icons/fa";
-import { TrendingUp, Shield, User } from "lucide-react";
+import {
+  TrendingUp,
+  Shield,
+  User,
+  Upload,
+  FileSpreadsheet,
+} from "lucide-react";
 import { storageUtils } from "../utils/localStorage";
 import { useAuth } from "../contexts/AuthContext";
 import { useSidebar } from "../contexts/SidebarContext";
+import { advertisementStorage } from "../utils/advertisementStorage";
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentUser, isAdmin, logout } = useAuth();
-  const { isCollapsed, toggleSidebar } = useSidebar(); // Use context instead of local state
+  const { isCollapsed, toggleSidebar } = useSidebar();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [statistics, setStatistics] = useState({
     totalEnquiries: 0,
     todayFollowUps: 0,
     allFollowUps: 0,
+    advertisementTotal: 0,
   });
 
   useEffect(() => {
@@ -62,6 +69,7 @@ const Sidebar: React.FC = () => {
           callBackDate.setHours(0, 0, 0, 0);
           return callBackDate >= today;
         }).length,
+        advertisementTotal: advertisementStorage.getStatistics().total,
       };
 
       setStatistics(stats);
@@ -146,11 +154,41 @@ const Sidebar: React.FC = () => {
       adminOnly: true,
       group: "admin",
     },
+    {
+      path: "/import-advertisement",
+      icon: <Upload className="w-5 h-5" />,
+      label: "Import Advertisement",
+      badge: null,
+      show: true,
+      group: "advertisement",
+    },
+    {
+      path: "/advertisement-enquiries",
+      icon: <FileSpreadsheet className="w-5 h-5" />,
+      label: "Advertisement Data",
+      badge:
+        statistics.advertisementTotal > 0
+          ? statistics.advertisementTotal
+          : null,
+      show: true,
+      group: "advertisement",
+    },
+    {
+      path: "/search-advertisement",
+      icon: <FaSearch className="w-5 h-5" />,
+      label: "Search Advertisement",
+      badge: null,
+      show: true,
+      group: "advertisement",
+    },
   ].filter((item) => item.show);
 
   const mainMenuItems = menuItems.filter((item) => item.group === "main");
   const followUpItems = menuItems.filter((item) => item.group === "followups");
   const adminItems = menuItems.filter((item) => item.group === "admin");
+  const advertisementItems = menuItems.filter(
+    (item) => item.group === "advertisement"
+  );
 
   const getUserInitials = () => {
     if (!currentUser?.fullName) return "U";
@@ -311,6 +349,51 @@ const Sidebar: React.FC = () => {
             ))}
           </ul>
 
+          {/* Advertisement Menu Items */}
+          {advertisementItems.length > 0 && (
+            <>
+              {!isCollapsed && (
+                <div className="my-3 border-t border-gray-200"></div>
+              )}
+              <ul className="flex flex-col space-y-1">
+                {!isCollapsed && (
+                  <li className="px-2 py-1 text-xs font-semibold text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                    <FileSpreadsheet size={12} />
+                    Advertisement
+                  </li>
+                )}
+                {advertisementItems.map((item) => (
+                  <li key={item.path}>
+                    <Link
+                      to={item.path}
+                      className={linkClasses(item.path)}
+                      title={isCollapsed ? item.label : ""}
+                    >
+                      <div className="flex items-center flex-1 min-w-0">
+                        <span
+                          className={`${
+                            isCollapsed ? "mx-auto" : "mr-3"
+                          } flex-shrink-0`}
+                        >
+                          {item.icon}
+                        </span>
+                        {!isCollapsed && (
+                          <span className="truncate">{item.label}</span>
+                        )}
+                      </div>
+
+                      {!isCollapsed && item.badge !== null && (
+                        <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-semibold flex-shrink-0 bg-blue-500 text-white">
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
           {/* Admin Menu Items */}
           {adminItems.length > 0 && (
             <>
@@ -384,6 +467,12 @@ const Sidebar: React.FC = () => {
                   <span className="text-xs text-gray-600">All Follow-ups</span>
                   <span className="text-xs font-bold text-gray-800">
                     {statistics.allFollowUps}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                  <span className="text-xs text-gray-600">Advertisement</span>
+                  <span className="text-xs font-bold text-blue-600">
+                    {statistics.advertisementTotal}
                   </span>
                 </div>
               </div>

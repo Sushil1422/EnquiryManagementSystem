@@ -8,6 +8,9 @@ import SearchEnquiry from "./pages/SearchEnquiry";
 import TodayFollowUps from "./pages/TodaysFollowUps";
 import AllFollowUps from "./pages/AllFollowUps";
 import UserManagement from "./pages/UserManagement";
+import ImportAdvertisement from "./pages/ImportAdvertisement";
+import AdvertisementEnquiries from "./pages/AdvertisementEnquiries";
+import SearchAdvertisementEnquiry from "./pages/SearchAdvertisementEnquiry"; // ADD THIS
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./contexts/AuthContext";
 import { SidebarProvider, useSidebar } from "./contexts/SidebarContext";
@@ -91,6 +94,32 @@ function App() {
                 element={
                   <AppLayout>
                     <UserManagement />
+                  </AppLayout>
+                }
+              />
+              {/* Advertisement Routes */}
+              <Route
+                path="/import-advertisement"
+                element={
+                  <AppLayout>
+                    <ImportAdvertisement />
+                  </AppLayout>
+                }
+              />
+              <Route
+                path="/advertisement-enquiries"
+                element={
+                  <AppLayout>
+                    <AdvertisementEnquiries />
+                  </AppLayout>
+                }
+              />
+              {/* ADD THIS NEW ROUTE */}
+              <Route
+                path="/search-advertisement"
+                element={
+                  <AppLayout>
+                    <SearchAdvertisementEnquiry />
                   </AppLayout>
                 }
               />

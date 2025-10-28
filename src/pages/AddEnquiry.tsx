@@ -1802,7 +1802,6 @@ const AddEnquiry: React.FC = () => {
                     "Traider",
                     "Self-Employed",
                     "Student",
-                    "Retired",
                     "Other",
                   ]}
                   required={true}
