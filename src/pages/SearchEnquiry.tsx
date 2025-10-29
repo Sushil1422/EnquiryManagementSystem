@@ -78,11 +78,11 @@ const SearchEnquiry: React.FC = () => {
     allEnquiries,
   ]);
 
-  const loadEnquiries = () => {
+  const loadEnquiries = async () => {
     setIsLoading(true);
     try {
       const data = storageUtils.getAllEnquiries();
-      const sorted = data.sort(
+      const sorted = (await data).sort(
         (a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
@@ -228,7 +228,7 @@ const SearchEnquiry: React.FC = () => {
         ...editFormData,
         updatedAt: new Date().toISOString(),
       } as Partial<EnquiryData>);
-      if (updated) {
+      if (await updated) {
         showToast("Enquiry updated successfully", "success");
         loadEnquiries();
         setShowDetailsModal(false);
@@ -249,12 +249,12 @@ const SearchEnquiry: React.FC = () => {
     setShowDetailsModal(false);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!enquiryToDelete) return;
 
     try {
       const success = storageUtils.deleteEnquiry(enquiryToDelete);
-      if (success) {
+      if (await success) {
         showToast("Enquiry deleted successfully", "success");
         loadEnquiries();
       } else {
@@ -433,22 +433,6 @@ const SearchEnquiry: React.FC = () => {
       />
     </svg>
   );
-
-  // const UserIcon = () => (
-  //   <svg
-  //     className="w-5 h-5"
-  //     fill="none"
-  //     stroke="currentColor"
-  //     viewBox="0 0 24 24"
-  //   >
-  //     <path
-  //       strokeLinecap="round"
-  //       strokeLinejoin="round"
-  //       strokeWidth={2}
-  //       d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-  //     />
-  //   </svg>
-  // );
 
   // const BriefcaseIcon = () => (
   //   <svg

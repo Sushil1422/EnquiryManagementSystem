@@ -1,0 +1,56 @@
+appId: com.sushilpatil.desktopcrm
+productName: Desktop CRM
+copyright: Copyright © 2025 SushilPatil
+directories:
+  buildResources: assets
+  output: release
+files:
+  - dist/**/*
+  - public/electron.js
+  - public/preload.js
+  - node_modules/**/*
+  - package.json
+extraMetadata:
+  main: public/electron.js
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+        - ia32
+    - target: portable
+      arch:
+        - x64
+  icon: public/icon.ico
+  artifactName: ${productName}-Setup-${version}.${ext}
+
+mac:
+  target:
+    - dmg
+    - zip
+  icon: public/icon.icns
+  category: public.app-category.business
+  artifactName: ${productName}-${version}-${arch}.${ext}
+
+linux:
+  target:
+    - AppImage
+    - deb
+    - rpm
+  icon: public/icon.png
+  category: Office
+  artifactName: ${productName}-${version}-${arch}.${ext}
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Desktop CRM
+  perMachine: false
+  runAfterFinish: true
+  installerIcon: public/icon.ico
+  uninstallerIcon: public/icon.ico
+  installerHeaderIcon: public/icon.ico
+  license: LICENSE

@@ -59,17 +59,17 @@ const AdvertisementEnquiries: React.FC = () => {
     filterEnquiries();
   }, [searchTerm, enquiries]);
 
-  const loadEnquiries = () => {
+  const loadEnquiries = async () => {
     setIsLoading(true);
     try {
       const data = advertisementStorage.getAllAdvertisementEnquiries();
-      const sortedData = data.sort(
+      const sortedData = (await data).sort(
         (a, b) =>
           new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
       );
       setEnquiries(sortedData);
       setFilteredEnquiries(sortedData);
-      setStatistics(advertisementStorage.getStatistics());
+      setStatistics(await advertisementStorage.getStatistics());
     } catch (error) {
       console.error("Error loading enquiries:", error);
       showToast("Failed to load enquiries", "error");
@@ -153,7 +153,7 @@ const AdvertisementEnquiries: React.FC = () => {
     return validation.isValid;
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editFormData || !validateEditForm()) {
       showToast("Please fix the errors before saving", "error");
       return;
@@ -164,7 +164,7 @@ const AdvertisementEnquiries: React.FC = () => {
         editFormData.id,
         editFormData
       );
-      if (success) {
+      if (await success) {
         showToast("Enquiry updated successfully", "success");
         loadEnquiries();
         setIsEditing(false);
@@ -189,7 +189,7 @@ const AdvertisementEnquiries: React.FC = () => {
     setShowDetailsModal(false);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!enquiryToDelete) return;
 
     if (!isAdmin()) {
@@ -202,7 +202,7 @@ const AdvertisementEnquiries: React.FC = () => {
     try {
       const success =
         advertisementStorage.deleteAdvertisementEnquiry(enquiryToDelete);
-      if (success) {
+      if (await success) {
         showToast("Enquiry deleted successfully", "success");
         loadEnquiries();
       } else {

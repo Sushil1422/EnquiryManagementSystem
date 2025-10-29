@@ -81,11 +81,11 @@ const TodaysFollowUps: React.FC = () => {
     );
   };
 
-  const loadTodaysFollowUps = () => {
+  const loadTodaysFollowUps = async () => {
     setIsLoading(true);
     try {
       const allEnquiries = storageUtils.getAllEnquiries();
-      const todayFollowUps = allEnquiries.filter((enquiry) =>
+      const todayFollowUps = (await allEnquiries).filter((enquiry) =>
         isToday(enquiry.callBackDate)
       );
 
@@ -187,7 +187,7 @@ const TodaysFollowUps: React.FC = () => {
 
     try {
       const updated = storageUtils.updateEnquiry(editFormData.id, editFormData);
-      if (updated) {
+      if (await updated) {
         showToast("Follow-up updated successfully", "success");
         loadTodaysFollowUps();
         setShowEditModal(false);

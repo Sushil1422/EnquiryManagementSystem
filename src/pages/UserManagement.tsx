@@ -41,8 +41,8 @@ const UserManagement: React.FC = () => {
     loadUsers();
   }, []);
 
-  const loadUsers = () => {
-    const allUsers = authUtils.getAllUsers();
+  const loadUsers = async () => {
+    const allUsers = await authUtils.getAllUsers(); // ✅ Added await
     setUsers(allUsers);
   };
 
@@ -58,7 +58,7 @@ const UserManagement: React.FC = () => {
     setShowPassword(false);
   };
 
-  const validateForm = (isEdit: boolean = false): boolean => {
+  const validateForm = async (isEdit: boolean = false): Promise<boolean> => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.username.trim()) {
@@ -69,7 +69,8 @@ const UserManagement: React.FC = () => {
       newErrors.username =
         "Username can only contain letters, numbers, and underscores";
     } else if (
-      authUtils.usernameExists(
+      await authUtils.usernameExists(
+        // ✅ Added await
         formData.username,
         isEdit ? selectedUser?.id : undefined
       )
@@ -95,8 +96,10 @@ const UserManagement: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleAddUser = () => {
-    if (!validateForm()) {
+  const handleAddUser = async () => {
+    // ✅ Made async
+    if (!(await validateForm())) {
+      // ✅ Added await
       showToast("Please fix the errors before saving", "error");
       return;
     }
@@ -116,8 +119,10 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const handleEditUser = () => {
-    if (!selectedUser || !validateForm(true)) {
+  const handleEditUser = async () => {
+    // ✅ Made async
+    if (!selectedUser || !(await validateForm(true))) {
+      // ✅ Added await
       showToast("Please fix the errors before saving", "error");
       return;
     }

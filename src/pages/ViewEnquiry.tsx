@@ -23,7 +23,7 @@ import { storageUtils, type EnquiryData } from "../utils/localStorage";
 import { useAuth } from "../contexts/AuthContext";
 
 const ViewEnquiry: React.FC = () => {
-  const { canDelete } = useAuth(); // Add permission check
+  const { canDelete } = useAuth();
 
   const [currentDate, setCurrentDate] = useState("");
   const [currentTime, setCurrentTime] = useState("");
@@ -81,19 +81,41 @@ const ViewEnquiry: React.FC = () => {
     filterEnquiries();
   }, [searchTerm, statusFilter, stateFilter, enquiries]);
 
-  const loadEnquiries = () => {
+  const loadEnquiries = async () => {
     setIsLoading(true);
     try {
-      const data = storageUtils.getAllEnquiries();
+      console.log("🔄 Starting to load enquiries...");
+
+      // ✅ Properly await the data
+      const data = await storageUtils.getAllEnquiries();
+
+      // 🔍 DEBUG: Log what we got from storage
+      console.log("📦 Raw data from storage:", data);
+      console.log("📊 Total enquiries fetched:", data?.length || 0);
+
+      if (!data || !Array.isArray(data)) {
+        console.warn("⚠️ No valid data returned from storage");
+        setEnquiries([]);
+        setFilteredEnquiries([]);
+        return;
+      }
+
+      // Sort by creation date (newest first)
       const sortedData = data.sort(
         (a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
+
+      console.log("✅ Sorted enquiries ready to display:", sortedData.length);
+      console.log("First enquiry:", sortedData[0]);
+
       setEnquiries(sortedData);
       setFilteredEnquiries(sortedData);
     } catch (error) {
-      console.error("Error loading enquiries:", error);
+      console.error("❌ Error loading enquiries:", error);
       showToast("Failed to load enquiries", "error");
+      setEnquiries([]);
+      setFilteredEnquiries([]);
     } finally {
       setIsLoading(false);
     }
@@ -103,9 +125,10 @@ const ViewEnquiry: React.FC = () => {
     setIsRefreshing(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 500));
-      loadEnquiries();
+      await loadEnquiries(); // ✅ Add await here
       showToast("Enquiries refreshed successfully", "success");
     } catch (error) {
+      console.error("❌ Error refreshing:", error);
       showToast("Failed to refresh enquiries", "error");
     } finally {
       setIsRefreshing(false);
@@ -134,6 +157,7 @@ const ViewEnquiry: React.FC = () => {
       filtered = filtered.filter((enq) => enq.enquiryState === stateFilter);
     }
 
+    console.log("🔎 Filtered results:", filtered.length);
     setFilteredEnquiries(filtered);
   };
 
@@ -190,12 +214,13 @@ const ViewEnquiry: React.FC = () => {
     }
 
     try {
-      const updated = storageUtils.updateEnquiry(editFormData.id, {
+      const updated = await storageUtils.updateEnquiry(editFormData.id, {
         ...editFormData,
       });
+
       if (updated) {
         showToast("Enquiry updated successfully", "success");
-        loadEnquiries();
+        await loadEnquiries();
         setShowDetailsModal(false);
         setEditFormData(null);
         setIsEditing(false);
@@ -203,13 +228,12 @@ const ViewEnquiry: React.FC = () => {
         showToast("Failed to update enquiry", "error");
       }
     } catch (error) {
-      console.error("Error updating enquiry:", error);
+      console.error("❌ Error updating enquiry:", error);
       showToast("Error updating enquiry", "error");
     }
   };
 
   const handleDeleteClick = (enquiry: EnquiryData) => {
-    // Add permission check
     if (!canDelete()) {
       showToast("You don't have permission to delete enquiries", "error");
       return;
@@ -220,10 +244,9 @@ const ViewEnquiry: React.FC = () => {
     setShowDetailsModal(false);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!enquiryToDelete) return;
 
-    // Double check permission
     if (!canDelete()) {
       showToast("Only administrators can delete enquiries", "error");
       setShowDeleteConfirm(false);
@@ -232,15 +255,16 @@ const ViewEnquiry: React.FC = () => {
     }
 
     try {
-      const success = storageUtils.deleteEnquiry(enquiryToDelete);
+      const success = await storageUtils.deleteEnquiry(enquiryToDelete);
+
       if (success) {
         showToast("Enquiry deleted successfully", "success");
-        loadEnquiries();
+        await loadEnquiries();
       } else {
         showToast("Failed to delete enquiry", "error");
       }
     } catch (error) {
-      console.error("Error deleting enquiry:", error);
+      console.error("❌ Error deleting enquiry:", error);
       showToast("Error deleting enquiry", "error");
     } finally {
       setShowDeleteConfirm(false);
@@ -656,7 +680,7 @@ const ViewEnquiry: React.FC = () => {
           onDelete={() => handleDeleteClick(editFormData)}
           getStatusColor={getStatusColor}
           getInterestedColor={getInterestedColor}
-          canDelete={canDelete()} // Pass permission prop
+          canDelete={canDelete()}
         />
       )}
 
@@ -731,7 +755,7 @@ const EditableDetailsModal: React.FC<any> = ({
   onDelete,
   getStatusColor,
   getInterestedColor,
-  canDelete = false, // Add canDelete prop with default value
+  canDelete = false,
 }) => {
   const formatDate = (dateString: string) => {
     if (!dateString) return "";
@@ -1098,9 +1122,8 @@ const EditableDetailsModal: React.FC<any> = ({
           </div>
         </div>
 
-        {/* Footer - Updated with permission check */}
+        {/* Footer */}
         <div className="sticky bottom-0 bg-gray-50 px-6 py-4 border-t flex flex-col sm:flex-row justify-between gap-3">
-          {/* Only show delete button for admins */}
           {canDelete ? (
             <button
               onClick={onDelete}

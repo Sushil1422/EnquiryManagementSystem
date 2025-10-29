@@ -100,14 +100,17 @@ const ImportAdvertisement: React.FC = () => {
         currentUser?.username
       );
 
-      setImportResult(result);
+      setImportResult(await result);
 
-      if (result.success > 0) {
-        showToast(`Successfully imported ${result.success} records`, "success");
+      if ((await result).success > 0) {
+        showToast(
+          `Successfully imported ${(await result).success} records`,
+          "success"
+        );
       }
 
-      if (result.failed > 0) {
-        showToast(`Failed to import ${result.failed} records`, "error");
+      if ((await result).failed > 0) {
+        showToast(`Failed to import ${(await result).failed} records`, "error");
       }
     } catch (error) {
       console.error("Error importing file:", error);

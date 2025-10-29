@@ -53,23 +53,24 @@ const Sidebar: React.FC = () => {
     );
   };
 
-  const loadStatistics = () => {
+  const loadStatistics = async () => {
     try {
       const allEnquiries = storageUtils.getAllEnquiries();
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
       const stats = {
-        totalEnquiries: allEnquiries.length,
-        todayFollowUps: allEnquiries.filter((e) => isToday(e.callBackDate))
-          .length,
-        allFollowUps: allEnquiries.filter((e) => {
+        totalEnquiries: (await allEnquiries).length,
+        todayFollowUps: (await allEnquiries).filter((e) =>
+          isToday(e.callBackDate)
+        ).length,
+        allFollowUps: (await allEnquiries).filter((e) => {
           if (!e.callBackDate) return false;
           const callBackDate = new Date(e.callBackDate);
           callBackDate.setHours(0, 0, 0, 0);
           return callBackDate >= today;
         }).length,
-        advertisementTotal: advertisementStorage.getStatistics().total,
+        advertisementTotal: (await advertisementStorage.getStatistics()).total,
       };
 
       setStatistics(stats);

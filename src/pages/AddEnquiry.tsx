@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./animation.css";
 import "react-datepicker/dist/react-datepicker.css";
+import { storageUtils, type EnquiryData } from "../utils/localStorage";
 
 // Types
 interface FormData {
@@ -27,290 +28,9 @@ interface FormData {
   knowledgeOfShareMarket: string;
 }
 
-interface EnquiryData extends FormData {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 interface FormErrors {
   [key: string]: string;
 }
-
-// LocalStorage Keys
-const STORAGE_KEY = "enquiry_management_data";
-
-// ========== LocalStorage Utility Functions ==========
-const storageUtils = {
-  // Get all enquiries from localStorage
-  getAllEnquiries: (): EnquiryData[] => {
-    try {
-      const data = localStorage.getItem(STORAGE_KEY);
-      return data ? JSON.parse(data) : [];
-    } catch (error) {
-      console.error("Error reading from localStorage:", error);
-      return [];
-    }
-  },
-
-  // Save enquiry to localStorage
-  saveEnquiry: (enquiry: FormData): EnquiryData => {
-    try {
-      const enquiries = storageUtils.getAllEnquiries();
-      const newEnquiry: EnquiryData = {
-        ...enquiry,
-        id: generateUniqueId(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      enquiries.push(newEnquiry);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(enquiries));
-      console.log("Enquiry saved successfully:", newEnquiry);
-      console.log("Total enquiries:", enquiries.length);
-      return newEnquiry;
-    } catch (error) {
-      console.error("Error saving to localStorage:", error);
-      throw error;
-    }
-  },
-
-  // Update existing enquiry
-  updateEnquiry: (
-    id: string,
-    updatedData: Partial<FormData>
-  ): EnquiryData | null => {
-    try {
-      const enquiries = storageUtils.getAllEnquiries();
-      const index = enquiries.findIndex((enq) => enq.id === id);
-      if (index === -1) return null;
-      enquiries[index] = {
-        ...enquiries[index],
-        ...updatedData,
-        updatedAt: new Date().toISOString(),
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(enquiries));
-      console.log("Enquiry updated successfully:", enquiries[index]);
-      return enquiries[index];
-    } catch (error) {
-      console.error("Error updating localStorage:", error);
-      throw error;
-    }
-  },
-
-  // Delete enquiry
-  deleteEnquiry: (id: string): boolean => {
-    try {
-      const enquiries = storageUtils.getAllEnquiries();
-      const filteredEnquiries = enquiries.filter((enq) => enq.id !== id);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredEnquiries));
-      console.log(
-        "Enquiry deleted successfully. Remaining:",
-        filteredEnquiries.length
-      );
-      return true;
-    } catch (error) {
-      console.error("Error deleting from localStorage:", error);
-      return false;
-    }
-  },
-
-  // Get enquiry by ID
-  getEnquiryById: (id: string): EnquiryData | null => {
-    const enquiries = storageUtils.getAllEnquiries();
-    return enquiries.find((enq) => enq.id === id) || null;
-  },
-
-  // Search enquiries
-  searchEnquiries: (searchTerm: string): EnquiryData[] => {
-    const enquiries = storageUtils.getAllEnquiries();
-    const lowerSearchTerm = searchTerm.toLowerCase();
-    return enquiries.filter(
-      (enq) =>
-        enq.fullName.toLowerCase().includes(lowerSearchTerm) ||
-        enq.mobile.includes(searchTerm) ||
-        enq.email.toLowerCase().includes(lowerSearchTerm) ||
-        enq.id.toLowerCase().includes(lowerSearchTerm)
-    );
-  },
-
-  // Get statistics
-  getStatistics: () => {
-    const enquiries = storageUtils.getAllEnquiries();
-    return {
-      total: enquiries.length,
-      confirmed: enquiries.filter((e) => e.status === "Confirmed").length,
-      pending: enquiries.filter((e) => e.status === "Pending").length,
-      inProcess: enquiries.filter((e) => e.status === "In Process").length,
-    };
-  },
-
-  // Export data as JSON (for backup)
-  exportData: (): string => {
-    const enquiries = storageUtils.getAllEnquiries();
-    return JSON.stringify(enquiries, null, 2);
-  },
-
-  // Import data from JSON (for restore)
-  importData: (jsonData: string): boolean => {
-    try {
-      const data = JSON.parse(jsonData);
-      if (Array.isArray(data)) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        console.log("Data imported successfully:", data.length, "records");
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error("Error importing data:", error);
-      return false;
-    }
-  },
-
-  // Clear all data
-  clearAllData: (): void => {
-    if (
-      window.confirm(
-        "Are you sure you want to delete all enquiries? This action cannot be undone."
-      )
-    ) {
-      localStorage.removeItem(STORAGE_KEY);
-      console.log("All data cleared");
-    }
-  },
-
-  // Get enquiries by date range
-  getEnquiriesByDateRange: (
-    startDate: string,
-    endDate: string
-  ): EnquiryData[] => {
-    const enquiries = storageUtils.getAllEnquiries();
-    return enquiries.filter((enq) => {
-      const createdDate = new Date(enq.createdAt);
-      return (
-        createdDate >= new Date(startDate) && createdDate <= new Date(endDate)
-      );
-    });
-  },
-
-  // Get enquiries by status
-  getEnquiriesByStatus: (status: string): EnquiryData[] => {
-    const enquiries = storageUtils.getAllEnquiries();
-    return enquiries.filter((enq) => enq.status === status);
-  },
-
-  // Enhanced Aadhar check with better formatting
-  isAadharExists: (aadhar: string, excludeId?: string): boolean => {
-    const enquiries = storageUtils.getAllEnquiries();
-    const cleanAadhar = aadhar.replace(/\s/g, "");
-    return enquiries.some(
-      (enq) =>
-        enq.id !== excludeId &&
-        enq.aadharNumber.replace(/\s/g, "") === cleanAadhar
-    );
-  },
-
-  // Enhanced PAN check
-  isPANExists: (pan: string, excludeId?: string): boolean => {
-    const enquiries = storageUtils.getAllEnquiries();
-    const cleanPAN = pan.toUpperCase().trim();
-    return enquiries.some(
-      (enq) =>
-        enq.id !== excludeId && enq.panNumber.toUpperCase().trim() === cleanPAN
-    );
-  },
-
-  // Enhanced Mobile check
-  isMobileExists: (mobile: string, excludeId?: string): boolean => {
-    const enquiries = storageUtils.getAllEnquiries();
-    return enquiries.some(
-      (enq) => enq.id !== excludeId && enq.mobile === mobile
-    );
-  },
-
-  // Enhanced Email check
-  isEmailExists: (email: string, excludeId?: string): boolean => {
-    const enquiries = storageUtils.getAllEnquiries();
-    const cleanEmail = email.toLowerCase().trim();
-    return enquiries.some(
-      (enq) =>
-        enq.id !== excludeId && enq.email.toLowerCase().trim() === cleanEmail
-    );
-  },
-
-  // Check for any duplicates
-  checkDuplicates: (
-    formData: Partial<FormData>
-  ): {
-    field: string;
-    message: string;
-  }[] => {
-    const duplicates: { field: string; message: string }[] = [];
-
-    if (
-      formData.aadharNumber &&
-      storageUtils.isAadharExists(formData.aadharNumber)
-    ) {
-      duplicates.push({
-        field: "aadharNumber",
-        message: "This Aadhar number is already registered",
-      });
-    }
-
-    if (formData.panNumber && storageUtils.isPANExists(formData.panNumber)) {
-      duplicates.push({
-        field: "panNumber",
-        message: "This PAN number is already registered",
-      });
-    }
-
-    if (formData.mobile && storageUtils.isMobileExists(formData.mobile)) {
-      duplicates.push({
-        field: "mobile",
-        message: "This mobile number is already registered",
-      });
-    }
-
-    if (formData.email && storageUtils.isEmailExists(formData.email)) {
-      duplicates.push({
-        field: "email",
-        message: "This email address is already registered",
-      });
-    }
-
-    return duplicates;
-  },
-
-  // Get existing enquiry details by Aadhar or PAN
-  getExistingEnquiry: (aadhar?: string, pan?: string): EnquiryData | null => {
-    const enquiries = storageUtils.getAllEnquiries();
-
-    if (aadhar) {
-      const cleanAadhar = aadhar.replace(/\s/g, "");
-      const found = enquiries.find(
-        (enq) => enq.aadharNumber.replace(/\s/g, "") === cleanAadhar
-      );
-      if (found) return found;
-    }
-
-    if (pan) {
-      const cleanPAN = pan.toUpperCase().trim();
-      const found = enquiries.find(
-        (enq) => enq.panNumber.toUpperCase().trim() === cleanPAN
-      );
-      if (found) return found;
-    }
-
-    return null;
-  },
-};
-
-// Generate unique ID
-const generateUniqueId = (): string => {
-  return `ENQ-${Date.now()}-${Math.random()
-    .toString(36)
-    .substr(2, 9)
-    .toUpperCase()}`;
-};
 
 // ========== Validation Functions ==========
 const ValidationHelpers = {
@@ -989,8 +709,11 @@ const AddEnquiry: React.FC = () => {
 
   // Load statistics on component mount
   useEffect(() => {
-    const statistics = storageUtils.getStatistics();
-    setStats(statistics);
+    const loadStats = async () => {
+      const statistics = await storageUtils.getStatistics();
+      setStats(statistics);
+    };
+    loadStats();
   }, []);
 
   // Format mobile number
@@ -1041,7 +764,7 @@ const AddEnquiry: React.FC = () => {
   };
 
   // Validate individual field
-  const validateField = (field: keyof FormData) => {
+  const validateField = async (field: keyof FormData) => {
     const value = formData[field];
     let error = "";
 
@@ -1052,7 +775,7 @@ const AddEnquiry: React.FC = () => {
 
       case "mobile":
         error = ValidationHelpers.validateMobile(value);
-        if (!error && storageUtils.isMobileExists(value)) {
+        if (!error && (await storageUtils.isMobileExists(value))) {
           error = "⚠️ This mobile number is already registered";
         }
         break;
@@ -1068,7 +791,7 @@ const AddEnquiry: React.FC = () => {
 
       case "email":
         error = ValidationHelpers.validateEmail(value);
-        if (!error && storageUtils.isEmailExists(value)) {
+        if (!error && (await storageUtils.isEmailExists(value))) {
           error = "⚠️ This email is already registered";
         }
         break;
@@ -1079,9 +802,9 @@ const AddEnquiry: React.FC = () => {
 
       case "aadharNumber":
         error = ValidationHelpers.validateAadhar(value);
-        if (!error && storageUtils.isAadharExists(value)) {
+        if (!error && (await storageUtils.isAadharExists(value))) {
           error = "⚠️ This Aadhar number is already registered";
-          const existing = storageUtils.getExistingEnquiry(value);
+          const existing = await storageUtils.getExistingEnquiry(value);
           if (existing) {
             setDuplicateEnquiry(existing);
             setDuplicateField("Aadhar");
@@ -1091,9 +814,12 @@ const AddEnquiry: React.FC = () => {
 
       case "panNumber":
         error = ValidationHelpers.validatePAN(value);
-        if (!error && storageUtils.isPANExists(value)) {
+        if (!error && (await storageUtils.isPANExists(value))) {
           error = "⚠️ This PAN number is already registered";
-          const existing = storageUtils.getExistingEnquiry(undefined, value);
+          const existing = await storageUtils.getExistingEnquiry(
+            undefined,
+            value
+          );
           if (existing) {
             setDuplicateEnquiry(existing);
             setDuplicateField("PAN");
@@ -1187,7 +913,7 @@ const AddEnquiry: React.FC = () => {
   };
 
   // Validation
-  const validate = (): boolean => {
+  const validate = async (): Promise<boolean> => {
     const newErrors: FormErrors = {};
     const fieldsToValidate: (keyof FormData)[] = [
       "fullName",
@@ -1209,28 +935,28 @@ const AddEnquiry: React.FC = () => {
       "depositOutwardDate",
     ];
 
-    fieldsToValidate.forEach((field) => {
-      const error = validateField(field);
+    for (const field of fieldsToValidate) {
+      const error = await validateField(field);
       if (error) {
         newErrors[field] = error;
       }
-    });
+    }
 
     if (formData.alternateMobile) {
-      const error = validateField("alternateMobile");
+      const error = await validateField("alternateMobile");
       if (error) newErrors.alternateMobile = error;
     }
     if (formData.demateAccount2) {
-      const error = validateField("demateAccount2");
+      const error = await validateField("demateAccount2");
       if (error) newErrors.demateAccount2 = error;
     }
 
     if (formData.howDidYouKnow === "Other") {
-      const error = validateField("customHowDidYouKnow");
+      const error = await validateField("customHowDidYouKnow");
       if (error) newErrors.customHowDidYouKnow = error;
     }
     if (formData.profession === "Other") {
-      const error = validateField("customProfession");
+      const error = await validateField("customProfession");
       if (error) newErrors.customProfession = error;
     }
 
@@ -1242,6 +968,9 @@ const AddEnquiry: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    console.log("🔴 FORM SUBMIT - Starting...");
+    console.log("🔴 Form data:", formData);
+
     const allTouched: Record<string, boolean> = {};
     Object.keys(formData).forEach((key) => {
       allTouched[key] = true;
@@ -1249,7 +978,7 @@ const AddEnquiry: React.FC = () => {
     setTouched(allTouched);
 
     // Check for duplicates first
-    const duplicates = storageUtils.checkDuplicates(formData);
+    const duplicates = await storageUtils.checkDuplicates(formData);
 
     if (duplicates.length > 0) {
       const duplicateErrors: FormErrors = {};
@@ -1259,22 +988,14 @@ const AddEnquiry: React.FC = () => {
       setErrors((prev) => ({ ...prev, ...duplicateErrors }));
 
       const firstDuplicate = duplicates[0];
-      const existing =
-        storageUtils.getExistingEnquiry(
-          firstDuplicate.field === "aadharNumber"
-            ? formData.aadharNumber
-            : undefined,
-          firstDuplicate.field === "panNumber" ? formData.panNumber : undefined
-        ) ||
-        storageUtils
-          .getAllEnquiries()
-          .find(
-            (enq) =>
-              (firstDuplicate.field === "mobile" &&
-                enq.mobile === formData.mobile) ||
-              (firstDuplicate.field === "email" &&
-                enq.email.toLowerCase() === formData.email.toLowerCase())
-          );
+      const existing = await storageUtils.getExistingEnquiry(
+        firstDuplicate.field === "aadharNumber"
+          ? formData.aadharNumber
+          : undefined,
+        firstDuplicate.field === "panNumber" ? formData.panNumber : undefined,
+        firstDuplicate.field === "mobile" ? formData.mobile : undefined,
+        firstDuplicate.field === "email" ? formData.email : undefined
+      );
 
       if (existing) {
         setDuplicateEnquiry(existing);
@@ -1296,7 +1017,7 @@ const AddEnquiry: React.FC = () => {
       return;
     }
 
-    if (!validate()) {
+    if (!(await validate())) {
       setToast({
         message: "Please fix all validation errors before submitting",
         type: "error",
@@ -1312,18 +1033,16 @@ const AddEnquiry: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      const finalDuplicates = storageUtils.checkDuplicates(formData);
-      if (finalDuplicates.length > 0) {
-        throw new Error(
-          "Duplicate data detected. Please verify unique fields."
-        );
-      }
+      console.log("🔴 Calling storageUtils.saveEnquiry...");
 
-      const savedEnquiry = storageUtils.saveEnquiry(formData);
-      const newStats = storageUtils.getStatistics();
+      const savedEnquiry = await storageUtils.saveEnquiry(formData);
+
+      console.log("🔴 Save result:", savedEnquiry);
+
+      const newStats = await storageUtils.getStatistics();
       setStats(newStats);
 
-      console.log("Form submitted and saved:", savedEnquiry);
+      console.log("✅ Form submitted and saved:", savedEnquiry);
       setToast({
         message: `✅ Enquiry added successfully! ID: ${savedEnquiry.id}`,
         type: "success",
@@ -1333,7 +1052,7 @@ const AddEnquiry: React.FC = () => {
         resetForm();
       }, 1500);
     } catch (error) {
-      console.error("Error saving enquiry:", error);
+      console.error("🔴 FORM ERROR:", error);
       setToast({
         message:
           error instanceof Error
@@ -2082,7 +1801,4 @@ const AddEnquiry: React.FC = () => {
   );
 };
 
-// Export utility functions for use in other components
-export { storageUtils, generateUniqueId };
-export type { EnquiryData };
 export default AddEnquiry;

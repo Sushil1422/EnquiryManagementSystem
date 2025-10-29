@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom"; // ✅ Changed BrowserRouter to HashRouter
 import Sidebar from "./components/Sidebar";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -10,7 +10,7 @@ import AllFollowUps from "./pages/AllFollowUps";
 import UserManagement from "./pages/UserManagement";
 import ImportAdvertisement from "./pages/ImportAdvertisement";
 import AdvertisementEnquiries from "./pages/AdvertisementEnquiries";
-import SearchAdvertisementEnquiry from "./pages/SearchAdvertisementEnquiry"; // ADD THIS
+import SearchAdvertisementEnquiry from "./pages/SearchAdvertisementEnquiry";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./contexts/AuthContext";
 import { SidebarProvider, useSidebar } from "./contexts/SidebarContext";
@@ -36,7 +36,9 @@ function App() {
   return (
     <AuthProvider>
       <SidebarProvider>
-        <BrowserRouter>
+        <HashRouter>
+          {" "}
+          {/* ✅ Changed from BrowserRouter */}
           <Routes>
             <Route path="/login" element={<Login />} />
 
@@ -114,7 +116,6 @@ function App() {
                   </AppLayout>
                 }
               />
-              {/* ADD THIS NEW ROUTE */}
               <Route
                 path="/search-advertisement"
                 element={
@@ -127,7 +128,8 @@ function App() {
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </BrowserRouter>
+        </HashRouter>{" "}
+        {/* ✅ Changed from BrowserRouter */}
       </SidebarProvider>
     </AuthProvider>
   );

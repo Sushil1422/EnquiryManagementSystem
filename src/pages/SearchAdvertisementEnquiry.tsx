@@ -54,13 +54,13 @@ const SearchAdvertisementEnquiry: React.FC = () => {
     }
 
     setIsSearching(true);
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
         const allEnquiries =
           advertisementStorage.getAllAdvertisementEnquiries();
         const term = searchTerm.toLowerCase();
 
-        let results = allEnquiries.filter(
+        let results = (await allEnquiries).filter(
           (enq) =>
             enq.name.toLowerCase().includes(term) ||
             enq.phoneNo.includes(term) ||
@@ -146,7 +146,7 @@ const SearchAdvertisementEnquiry: React.FC = () => {
     return validation.isValid;
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editFormData || !validateEditForm()) {
       showToast("Please fix the errors before saving", "error");
       return;
@@ -157,7 +157,7 @@ const SearchAdvertisementEnquiry: React.FC = () => {
         editFormData.id,
         editFormData
       );
-      if (success) {
+      if (await success) {
         showToast("Enquiry updated successfully", "success");
         // Update search results
         setSearchResults(
@@ -187,7 +187,7 @@ const SearchAdvertisementEnquiry: React.FC = () => {
     setShowDetailsModal(false);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!enquiryToDelete) return;
 
     if (!isAdmin()) {
@@ -200,7 +200,7 @@ const SearchAdvertisementEnquiry: React.FC = () => {
     try {
       const success =
         advertisementStorage.deleteAdvertisementEnquiry(enquiryToDelete);
-      if (success) {
+      if (await success) {
         showToast("Enquiry deleted successfully", "success");
         setSearchResults(
           searchResults.filter((enq) => enq.id !== enquiryToDelete)

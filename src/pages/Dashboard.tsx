@@ -86,49 +86,61 @@ const Dashboard: React.FC = () => {
     );
   };
 
-  const loadDashboardData = () => {
+  const loadDashboardData = async () => {
     try {
-      const allEnquiries = storageUtils.getAllEnquiries();
+      // ✅ Await ONCE and store the result
+      const allEnquiries = await storageUtils.getAllEnquiries();
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
+      // ✅ Now use allEnquiries directly without await
       const stats = {
         totalEnquiries: allEnquiries.length,
-        todayFollowUps: allEnquiries.filter((e) => isToday(e.callBackDate))
-          .length,
-        allFollowUps: allEnquiries.filter((e) => {
+        todayFollowUps: allEnquiries.filter((e: EnquiryData) =>
+          isToday(e.callBackDate)
+        ).length,
+        allFollowUps: allEnquiries.filter((e: EnquiryData) => {
           if (!e.callBackDate) return false;
           const callBackDate = new Date(e.callBackDate);
           callBackDate.setHours(0, 0, 0, 0);
           return callBackDate >= today;
         }).length,
-        confirmed: allEnquiries.filter((e) => e.status === "Confirmed").length,
-        pending: allEnquiries.filter((e) => e.status === "Pending").length,
-        inProcess: allEnquiries.filter((e) => e.status === "In Process").length,
+        confirmed: allEnquiries.filter(
+          (e: EnquiryData) => e.status === "Confirmed"
+        ).length,
+        pending: allEnquiries.filter((e: EnquiryData) => e.status === "Pending")
+          .length,
+        inProcess: allEnquiries.filter(
+          (e: EnquiryData) => e.status === "In Process"
+        ).length,
       };
 
       setStatistics(stats);
 
       // Load user statistics if admin
       if (isAdmin()) {
-        const allUsers = authUtils.getAllUsers().filter((u) => u.isActive);
+        // ✅ Await ONCE and store the result
+        const allUsers = await authUtils.getAllUsers();
+        const activeUsers = allUsers.filter((u) => u.isActive);
+
         setUserStats({
-          totalUsers: allUsers.length,
-          adminUsers: allUsers.filter((u) => u.role === "admin").length,
-          regularUsers: allUsers.filter((u) => u.role === "user").length,
+          totalUsers: activeUsers.length,
+          adminUsers: activeUsers.filter((u) => u.role === "admin").length,
+          regularUsers: activeUsers.filter((u) => u.role === "user").length,
         });
       }
 
-      const recent = allEnquiries
+      // ✅ Use allEnquiries directly
+      const recent = [...allEnquiries]
         .sort(
-          (a, b) =>
+          (a: EnquiryData, b: EnquiryData) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         )
         .slice(0, 5);
       setRecentEnquiries(recent);
 
       const todayFollows = allEnquiries
-        .filter((e) => isToday(e.callBackDate))
+        .filter((e: EnquiryData) => isToday(e.callBackDate))
         .slice(0, 5);
       setTodayFollowUps(todayFollows);
     } catch (error) {
@@ -140,7 +152,7 @@ const Dashboard: React.FC = () => {
     setIsRefreshing(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 500));
-      loadDashboardData();
+      await loadDashboardData();
     } finally {
       setIsRefreshing(false);
     }

@@ -93,15 +93,17 @@ const FollowUps: React.FC = () => {
     );
   };
 
-  const loadFollowUps = () => {
+  const loadFollowUps = async () => {
     setIsLoading(true);
     try {
-      const allEnquiries = storageUtils.getAllEnquiries();
+      // ✅ Await ONCE and store the result
+      const allEnquiries = await storageUtils.getAllEnquiries();
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const upcomingFollowUps = allEnquiries.filter((enquiry) => {
+      // ✅ Now use allEnquiries directly without await
+      const upcomingFollowUps = allEnquiries.filter((enquiry: EnquiryData) => {
         if (!enquiry.callBackDate) return false;
 
         const callBackDate = new Date(enquiry.callBackDate);
@@ -110,11 +112,13 @@ const FollowUps: React.FC = () => {
         return callBackDate >= today;
       });
 
-      const sortedFollowUps = upcomingFollowUps.sort((a, b) => {
-        const dateA = new Date(a.callBackDate).getTime();
-        const dateB = new Date(b.callBackDate).getTime();
-        return dateA - dateB;
-      });
+      const sortedFollowUps = upcomingFollowUps.sort(
+        (a: EnquiryData, b: EnquiryData) => {
+          const dateA = new Date(a.callBackDate).getTime();
+          const dateB = new Date(b.callBackDate).getTime();
+          return dateA - dateB;
+        }
+      );
 
       setFollowUps(sortedFollowUps);
       setFilteredFollowUps(sortedFollowUps);
@@ -130,7 +134,7 @@ const FollowUps: React.FC = () => {
     setIsRefreshing(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 500));
-      loadFollowUps();
+      await loadFollowUps();
       showToast("Follow-ups refreshed successfully", "success");
     } catch (error) {
       showToast("Failed to refresh follow-ups", "error");
@@ -210,10 +214,14 @@ const FollowUps: React.FC = () => {
     }
 
     try {
-      const updated = storageUtils.updateEnquiry(editFormData.id, editFormData);
+      // ✅ Await the update
+      const updated = await storageUtils.updateEnquiry(
+        editFormData.id,
+        editFormData
+      );
       if (updated) {
         showToast("Follow-up updated successfully", "success");
-        loadFollowUps();
+        await loadFollowUps(); // ✅ Await reload
         setShowEditModal(false);
         setEditFormData(null);
       } else {

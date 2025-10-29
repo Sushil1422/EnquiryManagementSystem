@@ -1,4 +1,5 @@
-const STORAGE_KEY = "enquiry_management_data";
+import { db } from './database';
+
 
 export interface EnquiryData {
   id: string;
@@ -56,23 +57,22 @@ const checkDeletePermission = (): boolean => {
 };
 
 export const storageUtils = {
-  // Get all enquiries from localStorage
-  getAllEnquiries: (): EnquiryData[] => {
+  // Get all enquiries
+  getAllEnquiries: async (): Promise<EnquiryData[]> => {
     try {
-      const data = localStorage.getItem(STORAGE_KEY);
-      return data ? JSON.parse(data) : [];
+      const enquiries = await db.enquiries.getAll();
+      return enquiries || [];
     } catch (error) {
-      console.error("Error reading from localStorage:", error);
+      console.error("Error reading enquiries:", error);
       return [];
     }
   },
 
-  // Save new enquiry to localStorage
-  saveEnquiry: (
+  // Save new enquiry
+  saveEnquiry: async (
     enquiry: Omit<EnquiryData, "id" | "createdAt" | "updatedAt">
-  ): EnquiryData => {
+  ): Promise<EnquiryData> => {
     try {
-      const enquiries = storageUtils.getAllEnquiries();
       const newEnquiry: EnquiryData = {
         ...enquiry,
         id: `ENQ-${Date.now()}-${Math.random()
@@ -82,42 +82,50 @@ export const storageUtils = {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      enquiries.push(newEnquiry);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(enquiries));
-      console.log("Enquiry saved successfully:", newEnquiry);
-      return newEnquiry;
+      
+      const result = await db.enquiries.add(newEnquiry);
+      
+      if (result.success) {
+        console.log("Enquiry saved successfully:", newEnquiry);
+        return newEnquiry;
+      } else {
+        throw new Error(result.error || "Failed to save enquiry");
+      }
     } catch (error) {
-      console.error("Error saving to localStorage:", error);
+      console.error("Error saving enquiry:", error);
       throw error;
     }
   },
 
   // Update existing enquiry
-  updateEnquiry: (
+  updateEnquiry: async (
     id: string,
     updatedData: Partial<EnquiryData>
-  ): EnquiryData | null => {
+  ): Promise<EnquiryData | null> => {
     try {
-      const enquiries = storageUtils.getAllEnquiries();
-      const index = enquiries.findIndex((enq) => enq.id === id);
-      if (index === -1) return null;
-
-      enquiries[index] = {
-        ...enquiries[index],
+      const dataToUpdate = {
         ...updatedData,
         updatedAt: new Date().toISOString(),
       };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(enquiries));
-      console.log("Enquiry updated successfully:", enquiries[index]);
-      return enquiries[index];
+      
+      const result = await db.enquiries.update(id, dataToUpdate);
+      
+      if (result.success) {
+        const enquiries = await db.enquiries.getAll();
+        const updated = enquiries.find((enq: EnquiryData) => enq.id === id);
+        console.log("Enquiry updated successfully:", updated);
+        return updated || null;
+      }
+      
+      return null;
     } catch (error) {
-      console.error("Error updating localStorage:", error);
+      console.error("Error updating enquiry:", error);
       throw error;
     }
   },
 
   // Delete enquiry (with permission check)
-  deleteEnquiry: (id: string): boolean => {
+  deleteEnquiry: async (id: string): Promise<boolean> => {
     try {
       // Check permission first
       if (!checkDeletePermission()) {
@@ -127,29 +135,30 @@ export const storageUtils = {
         return false;
       }
 
-      const enquiries = storageUtils.getAllEnquiries();
-      const filteredEnquiries = enquiries.filter((enq) => enq.id !== id);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredEnquiries));
-      console.log(
-        "Enquiry deleted successfully. Remaining:",
-        filteredEnquiries.length
-      );
-      return true;
+      const result = await db.enquiries.delete(id);
+      
+      if (result.success) {
+        const remaining = await db.enquiries.getAll();
+        console.log("Enquiry deleted successfully. Remaining:", remaining.length);
+        return true;
+      }
+      
+      return false;
     } catch (error) {
-      console.error("Error deleting from localStorage:", error);
+      console.error("Error deleting enquiry:", error);
       return false;
     }
   },
 
   // Get enquiry by ID
-  getEnquiryById: (id: string): EnquiryData | null => {
-    const enquiries = storageUtils.getAllEnquiries();
+  getEnquiryById: async (id: string): Promise<EnquiryData | null> => {
+    const enquiries = await storageUtils.getAllEnquiries();
     return enquiries.find((enq) => enq.id === id) || null;
   },
 
   // Search enquiries
-  searchEnquiries: (searchTerm: string): EnquiryData[] => {
-    const enquiries = storageUtils.getAllEnquiries();
+  searchEnquiries: async (searchTerm: string): Promise<EnquiryData[]> => {
+    const enquiries = await storageUtils.getAllEnquiries();
     const lowerSearchTerm = searchTerm.toLowerCase();
     return enquiries.filter(
       (enq) =>
@@ -161,8 +170,8 @@ export const storageUtils = {
   },
 
   // Get statistics
-  getStatistics: () => {
-    const enquiries = storageUtils.getAllEnquiries();
+  getStatistics: async () => {
+    const enquiries = await storageUtils.getAllEnquiries();
     return {
       total: enquiries.length,
       confirmed: enquiries.filter((e) => e.status === "Confirmed").length,
@@ -172,27 +181,58 @@ export const storageUtils = {
   },
 
   // Export data as JSON
-  exportData: (): string => {
-    const enquiries = storageUtils.getAllEnquiries();
+  exportData: async (): Promise<string> => {
+    const enquiries = await storageUtils.getAllEnquiries();
     return JSON.stringify(enquiries, null, 2);
   },
 
   // Download CSV backup
-  downloadCSVBackup: (): void => {
-    const enquiries = storageUtils.getAllEnquiries();
+  downloadCSVBackup: async (): Promise<void> => {
+    const enquiries = await storageUtils.getAllEnquiries();
     if (enquiries.length === 0) {
       alert("No enquiries to export");
       return;
     }
 
-    const headers = Object.keys(enquiries[0]);
+    const headers = [
+      "ID", "Full Name", "Mobile", "Alternate Mobile", "Email", "Address",
+      "Aadhar Number", "PAN Number", "Demat Account 1", "Demat Account 2",
+      "State", "Source", "Interest Level", "Status", "Profession",
+      "Custom Profession", "Market Knowledge", "How Did You Know",
+      "Custom Source", "Call Back Date", "Deposit Inward", "Deposit Outward",
+      "Created At", "Updated At"
+    ];
+
+    const rows = enquiries.map((e: EnquiryData) => [
+      e.id,
+      e.fullName,
+      e.mobile,
+      e.alternateMobile || "",
+      e.email,
+      e.address || "",
+      e.aadharNumber || "",
+      e.panNumber || "",
+      e.demateAccount1 || "",
+      e.demateAccount2 || "",
+      e.enquiryState,
+      e.sourceOfEnquiry || "",
+      e.interestedStatus || "",
+      e.status,
+      e.profession,
+      e.customProfession || "",
+      e.knowledgeOfShareMarket || "",
+      e.howDidYouKnow || "",
+      e.customHowDidYouKnow || "",
+      e.callBackDate || "",
+      e.depositInwardDate || "",
+      e.depositOutwardDate || "",
+      e.createdAt,
+      e.updatedAt || "",
+    ]);
+
     const csvContent = [
       headers.join(","),
-      ...enquiries.map((enq) =>
-        headers
-          .map((header) => `"${enq[header as keyof EnquiryData] || ""}"`)
-          .join(",")
-      ),
+      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
     ].join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -210,11 +250,14 @@ export const storageUtils = {
   },
 
   // Import data from JSON
-  importData: (jsonData: string): boolean => {
+  importData: async (jsonData: string): Promise<boolean> => {
     try {
       const data = JSON.parse(jsonData);
       if (Array.isArray(data)) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        // Import each enquiry
+        for (const enquiry of data) {
+          await db.enquiries.add(enquiry);
+        }
         console.log("Data imported successfully:", data.length, "records");
         return true;
       }
@@ -226,23 +269,26 @@ export const storageUtils = {
   },
 
   // Clear all data
-  clearAllData: (): void => {
+  clearAllData: async (): Promise<void> => {
     if (
       window.confirm(
         "Are you sure you want to delete all enquiries? This action cannot be undone."
       )
     ) {
-      localStorage.removeItem(STORAGE_KEY);
+      const enquiries = await storageUtils.getAllEnquiries();
+      for (const enq of enquiries) {
+        await db.enquiries.delete(enq.id);
+      }
       console.log("All data cleared");
     }
   },
 
   // Get enquiries by date range
-  getEnquiriesByDateRange: (
+  getEnquiriesByDateRange: async (
     startDate: string,
     endDate: string
-  ): EnquiryData[] => {
-    const enquiries = storageUtils.getAllEnquiries();
+  ): Promise<EnquiryData[]> => {
+    const enquiries = await storageUtils.getAllEnquiries();
     return enquiries.filter((enq) => {
       const createdDate = new Date(enq.createdAt);
       return (
@@ -252,14 +298,14 @@ export const storageUtils = {
   },
 
   // Get enquiries by status
-  getEnquiriesByStatus: (status: string): EnquiryData[] => {
-    const enquiries = storageUtils.getAllEnquiries();
+  getEnquiriesByStatus: async (status: string): Promise<EnquiryData[]> => {
+    const enquiries = await storageUtils.getAllEnquiries();
     return enquiries.filter((enq) => enq.status === status);
   },
 
   // Enhanced Aadhar check with excludeId parameter
-  isAadharExists: (aadhar: string, excludeId?: string): boolean => {
-    const enquiries = storageUtils.getAllEnquiries();
+  isAadharExists: async (aadhar: string, excludeId?: string): Promise<boolean> => {
+    const enquiries = await storageUtils.getAllEnquiries();
     const cleanAadhar = aadhar.replace(/\s/g, "");
     return enquiries.some(
       (enq) =>
@@ -269,8 +315,8 @@ export const storageUtils = {
   },
 
   // Enhanced PAN check with excludeId parameter
-  isPANExists: (pan: string, excludeId?: string): boolean => {
-    const enquiries = storageUtils.getAllEnquiries();
+  isPANExists: async (pan: string, excludeId?: string): Promise<boolean> => {
+    const enquiries = await storageUtils.getAllEnquiries();
     const cleanPAN = pan.toUpperCase().trim();
     return enquiries.some(
       (enq) =>
@@ -280,16 +326,16 @@ export const storageUtils = {
   },
 
   // Enhanced Mobile check with excludeId parameter
-  isMobileExists: (mobile: string, excludeId?: string): boolean => {
-    const enquiries = storageUtils.getAllEnquiries();
+  isMobileExists: async (mobile: string, excludeId?: string): Promise<boolean> => {
+    const enquiries = await storageUtils.getAllEnquiries();
     return enquiries.some(
       (enq) => enq.id !== excludeId && enq.mobile === mobile
     );
   },
 
   // Enhanced Email check with excludeId parameter
-  isEmailExists: (email: string, excludeId?: string): boolean => {
-    const enquiries = storageUtils.getAllEnquiries();
+  isEmailExists: async (email: string, excludeId?: string): Promise<boolean> => {
+    const enquiries = await storageUtils.getAllEnquiries();
     const cleanEmail = email.toLowerCase().trim();
     return enquiries.some(
       (enq) =>
@@ -299,66 +345,66 @@ export const storageUtils = {
   },
 
   // Check for any duplicates in form data
-  checkDuplicates: (
+  checkDuplicates: async (
     formData: Partial<EnquiryData>,
     excludeId?: string
-  ): {
+  ): Promise<{
     field: string;
     message: string;
-  }[] => {
+  }[]> => {
     const duplicates: { field: string; message: string }[] = [];
 
-    if (
-      formData.aadharNumber &&
-      storageUtils.isAadharExists(formData.aadharNumber, excludeId)
-    ) {
-      duplicates.push({
-        field: "aadharNumber",
-        message: "This Aadhar number is already registered",
-      });
+    if (formData.aadharNumber) {
+      const exists = await storageUtils.isAadharExists(formData.aadharNumber, excludeId);
+      if (exists) {
+        duplicates.push({
+          field: "aadharNumber",
+          message: "This Aadhar number is already registered",
+        });
+      }
     }
 
-    if (
-      formData.panNumber &&
-      storageUtils.isPANExists(formData.panNumber, excludeId)
-    ) {
-      duplicates.push({
-        field: "panNumber",
-        message: "This PAN number is already registered",
-      });
+    if (formData.panNumber) {
+      const exists = await storageUtils.isPANExists(formData.panNumber, excludeId);
+      if (exists) {
+        duplicates.push({
+          field: "panNumber",
+          message: "This PAN number is already registered",
+        });
+      }
     }
 
-    if (
-      formData.mobile &&
-      storageUtils.isMobileExists(formData.mobile, excludeId)
-    ) {
-      duplicates.push({
-        field: "mobile",
-        message: "This mobile number is already registered",
-      });
+    if (formData.mobile) {
+      const exists = await storageUtils.isMobileExists(formData.mobile, excludeId);
+      if (exists) {
+        duplicates.push({
+          field: "mobile",
+          message: "This mobile number is already registered",
+        });
+      }
     }
 
-    if (
-      formData.email &&
-      storageUtils.isEmailExists(formData.email, excludeId)
-    ) {
-      duplicates.push({
-        field: "email",
-        message: "This email address is already registered",
-      });
+    if (formData.email) {
+      const exists = await storageUtils.isEmailExists(formData.email, excludeId);
+      if (exists) {
+        duplicates.push({
+          field: "email",
+          message: "This email address is already registered",
+        });
+      }
     }
 
     return duplicates;
   },
 
   // Get existing enquiry details by Aadhar or PAN
-  getExistingEnquiry: (
+  getExistingEnquiry: async (
     aadhar?: string,
     pan?: string,
     mobile?: string,
     email?: string
-  ): EnquiryData | null => {
-    const enquiries = storageUtils.getAllEnquiries();
+  ): Promise<EnquiryData | null> => {
+    const enquiries = await storageUtils.getAllEnquiries();
 
     if (aadhar) {
       const cleanAadhar = aadhar.replace(/\s/g, "");
@@ -393,8 +439,8 @@ export const storageUtils = {
   },
 
   // Get today's follow-ups
-  getTodayFollowUps: (): EnquiryData[] => {
-    const enquiries = storageUtils.getAllEnquiries();
+  getTodayFollowUps: async (): Promise<EnquiryData[]> => {
+    const enquiries = await storageUtils.getAllEnquiries();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -407,8 +453,8 @@ export const storageUtils = {
   },
 
   // Get all upcoming follow-ups
-  getAllFollowUps: (): EnquiryData[] => {
-    const enquiries = storageUtils.getAllEnquiries();
+  getAllFollowUps: async (): Promise<EnquiryData[]> => {
+    const enquiries = await storageUtils.getAllEnquiries();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -421,8 +467,8 @@ export const storageUtils = {
   },
 
   // Get overdue follow-ups
-  getOverdueFollowUps: (): EnquiryData[] => {
-    const enquiries = storageUtils.getAllEnquiries();
+  getOverdueFollowUps: async (): Promise<EnquiryData[]> => {
+    const enquiries = await storageUtils.getAllEnquiries();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -435,38 +481,38 @@ export const storageUtils = {
   },
 
   // Validate unique fields before saving
-  validateUniqueFields: (
+  validateUniqueFields: async (
     formData: Partial<EnquiryData>,
     excludeId?: string
-  ): { isValid: boolean; errors: string[] } => {
+  ): Promise<{ isValid: boolean; errors: string[] }> => {
     const errors: string[] = [];
 
-    if (
-      formData.aadharNumber &&
-      storageUtils.isAadharExists(formData.aadharNumber, excludeId)
-    ) {
-      errors.push("Aadhar number already exists");
+    if (formData.aadharNumber) {
+      const exists = await storageUtils.isAadharExists(formData.aadharNumber, excludeId);
+      if (exists) {
+        errors.push("Aadhar number already exists");
+      }
     }
 
-    if (
-      formData.panNumber &&
-      storageUtils.isPANExists(formData.panNumber, excludeId)
-    ) {
-      errors.push("PAN number already exists");
+    if (formData.panNumber) {
+      const exists = await storageUtils.isPANExists(formData.panNumber, excludeId);
+      if (exists) {
+        errors.push("PAN number already exists");
+      }
     }
 
-    if (
-      formData.mobile &&
-      storageUtils.isMobileExists(formData.mobile, excludeId)
-    ) {
-      errors.push("Mobile number already exists");
+    if (formData.mobile) {
+      const exists = await storageUtils.isMobileExists(formData.mobile, excludeId);
+      if (exists) {
+        errors.push("Mobile number already exists");
+      }
     }
 
-    if (
-      formData.email &&
-      storageUtils.isEmailExists(formData.email, excludeId)
-    ) {
-      errors.push("Email address already exists");
+    if (formData.email) {
+      const exists = await storageUtils.isEmailExists(formData.email, excludeId);
+      if (exists) {
+        errors.push("Email address already exists");
+      }
     }
 
     return {
@@ -476,34 +522,35 @@ export const storageUtils = {
   },
 
   // Bulk import enquiries with duplicate checking
-  bulkImportEnquiries: (
+  bulkImportEnquiries: async (
     enquiries: Omit<EnquiryData, "id" | "createdAt" | "updatedAt">[]
-  ): {
+  ): Promise<{
     success: number;
     failed: number;
     errors: { index: number; error: string }[];
-  } => {
+  }> => {
     const result = {
       success: 0,
       failed: 0,
       errors: [] as { index: number; error: string }[],
     };
 
-    enquiries.forEach((enquiry, index) => {
+    for (let index = 0; index < enquiries.length; index++) {
+      const enquiry = enquiries[index];
       try {
         // Check for duplicates
-        const validation = storageUtils.validateUniqueFields(enquiry);
+        const validation = await storageUtils.validateUniqueFields(enquiry);
         if (!validation.isValid) {
           result.failed++;
           result.errors.push({
             index,
             error: validation.errors.join(", "),
           });
-          return;
+          continue;
         }
 
         // Save enquiry
-        storageUtils.saveEnquiry(enquiry);
+        await storageUtils.saveEnquiry(enquiry);
         result.success++;
       } catch (error) {
         result.failed++;
@@ -513,14 +560,14 @@ export const storageUtils = {
             error instanceof Error ? error.message : "Unknown error occurred",
         });
       }
-    });
+    }
 
     return result;
   },
 
   // Get enquiries count by state
-  getEnquiriesByState: (): { [state: string]: number } => {
-    const enquiries = storageUtils.getAllEnquiries();
+  getEnquiriesByState: async (): Promise<{ [state: string]: number }> => {
+    const enquiries = await storageUtils.getAllEnquiries();
     const stateCount: { [state: string]: number } = {};
 
     enquiries.forEach((enq) => {
@@ -534,8 +581,8 @@ export const storageUtils = {
   },
 
   // Get enquiries count by profession
-  getEnquiriesByProfession: (): { [profession: string]: number } => {
-    const enquiries = storageUtils.getAllEnquiries();
+  getEnquiriesByProfession: async (): Promise<{ [profession: string]: number }> => {
+    const enquiries = await storageUtils.getAllEnquiries();
     const professionCount: { [profession: string]: number } = {};
 
     enquiries.forEach((enq) => {
@@ -552,15 +599,15 @@ export const storageUtils = {
   },
 
   // Advanced search with multiple filters
-  advancedSearch: (filters: {
+  advancedSearch: async (filters: {
     searchTerm?: string;
     status?: string;
     state?: string;
     profession?: string;
     dateFrom?: string;
     dateTo?: string;
-  }): EnquiryData[] => {
-    let enquiries = storageUtils.getAllEnquiries();
+  }): Promise<EnquiryData[]> => {
+    let enquiries = await storageUtils.getAllEnquiries();
 
     if (filters.searchTerm) {
       const term = filters.searchTerm.toLowerCase();
